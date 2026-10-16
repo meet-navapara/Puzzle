@@ -10,6 +10,9 @@ startup and falls back to system clicks when a file is missing.
 | `bloom.wav` | Bloom prune |
 | `reject.wav` | Invalid drop / reject |
 | `game_over.wav` | Garden full / game over |
-| `music_loop.ogg` | Looping background music |
+| `music_loop.wav` (or `.ogg`) | Looping background music |
+
+Placeholder procedural WAVs are included for local testing. Replace them
+with final licensed audio before store release.
 
 Do not use audio extracted from other commercial games.

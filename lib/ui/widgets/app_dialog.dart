@@ -22,7 +22,8 @@ class AppDialogShell extends StatelessWidget {
             duration: reduced ? PetalMotion.tap : PetalMotion.dialog,
             curve: PetalMotion.settle,
             builder: (context, t, child) {
-              final opacity = reduced ? 1.0 : t;
+              // settle (easeOutBack) overshoots past 1 — Opacity must stay in [0, 1].
+              final opacity = reduced ? 1.0 : t.clamp(0.0, 1.0);
               final scale = reduced ? 1.0 : (0.92 + 0.08 * t);
               return Opacity(
                 opacity: opacity,

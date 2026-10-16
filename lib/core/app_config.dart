@@ -16,7 +16,7 @@ class AppConfig {
   static const int saveSchemaVersion = 1;
 
   /// Set true only after Firebase options files are installed.
-  static const bool firebaseEnabled = false;
+  static const bool firebaseEnabled = true;
 
   /// Set true to initialize the Mobile Ads SDK.
   static const bool adsEnabled = true;
@@ -82,10 +82,15 @@ class AppConfig {
   static const int interstitialMinIntervalSeconds = 180;
   static const int appOpenMinIntervalSeconds = 240;
 
-  /// Owner must replace with a real hosted privacy policy URL before store submission.
-  static const String privacyPolicyUrl = 'OWNER_SUPPLY_PRIVACY_POLICY_URL';
-  static const String supportUrl = 'OWNER_SUPPLY_SUPPORT_URL';
-  static const String termsUrl = 'OWNER_SUPPLY_TERMS_URL';
+  /// Hosted on Firebase Hosting (petalgrid-e7287).
+  static const String privacyPolicyUrl =
+      'https://petalgrid-e7287.web.app/privacy.html';
+  static const String supportUrl = 'https://petalgrid-e7287.web.app/support.html';
+  static const String termsUrl = 'https://petalgrid-e7287.web.app/terms.html';
+  /// Play Console → App content → Account deletion URL.
+  static const String accountDeletionUrl =
+      'https://petalgrid-e7287.web.app/delete-account.html';
+  static const String supportEmail = 'navaparameetdev@gmail.com';
 
   /// Bloom Charge: cells cleared needed for one charge; max stored charges.
   static const int bloomChargePerClearCells = 12;

@@ -25,7 +25,7 @@ flutter analyze
 
 ## Configuration gates
 
-Until you add Firebase config files, keep `AppConfig.firebaseEnabled = false` (default). Ads use Google **test** unit IDs.
+Firebase is enabled for Android (`firebaseEnabled = true`). Ads still use Google **test** unit IDs until production AdMob IDs are added. See `docs/ANDROID_RELEASE_SETUP.md` and `docs/PLAY_CONSOLE_DATA_SAFETY.md`.
 
 ## Project layout
 

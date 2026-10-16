@@ -98,17 +98,65 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Deletes Firebase Auth user. Cloud data deletion is handled by CloudSaveService.
-  Future<bool> deleteAccount() async {
+  /// Re-authenticates with Google so sensitive Auth actions (delete) succeed.
+  Future<bool> reauthenticateWithGoogle() async {
     if (!AppConfig.firebaseEnabled || user == null) return false;
     try {
-      await user!.delete();
-      user = null;
-      status = AuthStatus.guest;
+      _auth ??= FirebaseAuth.instance;
+      await _googleSignIn.initialize();
+      final account = await _googleSignIn.authenticate();
+      final googleAuth = account.authentication;
+      final credential = GoogleAuthProvider.credential(
+        idToken: googleAuth.idToken,
+      );
+      await user!.reauthenticateWithCredential(credential);
+      user = _auth!.currentUser;
       notifyListeners();
       return true;
+    } on GoogleSignInException catch (e) {
+      if (e.code == GoogleSignInExceptionCode.canceled) {
+        errorMessage = 'Sign-in canceled. Account was not deleted.';
+      } else {
+        errorMessage = 'Could not re-authenticate with Google.';
+      }
+      notifyListeners();
+      return false;
     } catch (e) {
-      errorMessage = 'Account deletion requires recent sign-in. Sign in again, then retry.';
+      errorMessage = 'Re-authentication failed. Try again.';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Deletes Firebase Auth user. Prefer calling [reauthenticateWithGoogle] first.
+  /// Cloud data deletion is handled by CloudSaveService.
+  Future<bool> deleteAccount({bool reauthenticateFirst = true}) async {
+    if (!AppConfig.firebaseEnabled || user == null) return false;
+    try {
+      if (reauthenticateFirst) {
+        final ok = await reauthenticateWithGoogle();
+        if (!ok) return false;
+      }
+      await user!.delete();
+      try {
+        await _googleSignIn.signOut();
+      } catch (_) {}
+      user = null;
+      status = AuthStatus.guest;
+      errorMessage = null;
+      notifyListeners();
+      return true;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login') {
+        errorMessage =
+            'Account deletion requires recent sign-in. Confirm Google Sign-In, then retry.';
+      } else {
+        errorMessage = 'Account deletion failed (${e.code}).';
+      }
+      notifyListeners();
+      return false;
+    } catch (e) {
+      errorMessage = 'Account deletion failed. Try again.';
       notifyListeners();
       return false;
     }

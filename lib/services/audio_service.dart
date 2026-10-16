@@ -10,8 +10,11 @@ import 'package:flutter/services.dart';
 /// back to short SystemSound clicks so gameplay stays responsive.
 class AudioService extends ChangeNotifier {
   AudioService() {
-    _sfx = AudioPlayer()..setReleaseMode(ReleaseMode.stop);
-    _music = AudioPlayer()..setReleaseMode(ReleaseMode.loop);
+    _sfx = AudioPlayer(playerId: 'petal_sfx')
+      ..setReleaseMode(ReleaseMode.stop)
+      ..setPlayerMode(PlayerMode.lowLatency);
+    _music = AudioPlayer(playerId: 'petal_music')
+      ..setReleaseMode(ReleaseMode.loop);
   }
 
   late final AudioPlayer _sfx;
@@ -28,6 +31,7 @@ class AudioService extends ChangeNotifier {
   bool _rejectAsset = false;
   bool _gameOverAsset = false;
   bool _musicAsset = false;
+  String _musicPath = 'audio/music_loop.wav';
   bool _probed = false;
   bool _musicPlaying = false;
 
@@ -37,12 +41,39 @@ class AudioService extends ChangeNotifier {
   Future<void> warmUp() async {
     if (_probed) return;
     _probed = true;
+    try {
+      await AudioPlayer.global.setAudioContext(
+        AudioContext(
+          android: const AudioContextAndroid(
+            contentType: AndroidContentType.sonification,
+            usageType: AndroidUsageType.game,
+            audioFocus: AndroidAudioFocus.gainTransientMayDuck,
+          ),
+          iOS: AudioContextIOS(
+            category: AVAudioSessionCategory.ambient,
+            options: {AVAudioSessionOptions.mixWithOthers},
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Audio context setup failed: $e');
+    }
     _placeAsset = await _assetExists('audio/place.wav');
     _clearAsset = await _assetExists('audio/clear.wav');
     _bloomAsset = await _assetExists('audio/bloom.wav');
     _rejectAsset = await _assetExists('audio/reject.wav');
     _gameOverAsset = await _assetExists('audio/game_over.wav');
-    _musicAsset = await _assetExists('audio/music_loop.ogg');
+    if (await _assetExists('audio/music_loop.wav')) {
+      _musicAsset = true;
+      _musicPath = 'audio/music_loop.wav';
+    } else if (await _assetExists('audio/music_loop.ogg')) {
+      _musicAsset = true;
+      _musicPath = 'audio/music_loop.ogg';
+    }
+    debugPrint(
+      'Audio assets: place=$_placeAsset clear=$_clearAsset bloom=$_bloomAsset '
+      'reject=$_rejectAsset gameOver=$_gameOverAsset music=$_musicAsset',
+    );
     await _applyVolumes();
     if (musicEnabled && _musicAsset) {
       await resumeMusic();
@@ -97,7 +128,7 @@ class AudioService extends ChangeNotifier {
     if (!musicEnabled || !_musicAsset) return;
     try {
       if (!_musicPlaying) {
-        await _music.play(AssetSource('audio/music_loop.ogg'));
+        await _music.play(AssetSource(_musicPath));
         _musicPlaying = true;
       } else {
         await _music.resume();

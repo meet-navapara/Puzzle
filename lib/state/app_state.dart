@@ -705,28 +705,52 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     return true;
   }
 
+  /// Signed-in: re-auth → wipe Firestore (while authed) → delete Auth → clear local.
+  /// Guest: clears local device data only.
   Future<bool> deleteAccountAndData() async {
     final uid = auth.uid;
     if (uid != null) {
-      final cloudOk = await cloud.deleteCloudData(uid);
-      final authOk = await auth.deleteAccount();
-      if (!authOk) {
-        statusMessage =
-            'Could not delete account. Sign in again, then retry. Local data kept.';
+      final reauthed = await auth.reauthenticateWithGoogle();
+      if (!reauthed) {
+        statusMessage = auth.errorMessage ??
+            'Could not verify Google Sign-In. Account was not deleted.';
         notifyListeners();
         return false;
       }
-      if (!cloudOk) {
-        statusMessage = 'Account deleted; cloud wipe may need a retry later.';
+      final cloudOk = await cloud.deleteCloudData(uid);
+      final authOk = await auth.deleteAccount(reauthenticateFirst: false);
+      if (!authOk) {
+        statusMessage = auth.errorMessage ??
+            'Cloud data may be gone, but Auth deletion failed. Retry or email support.';
+        notifyListeners();
+        return false;
       }
+      statusMessage = cloudOk
+          ? 'Account and cloud data deleted.'
+          : 'Account deleted. If cloud data remains, email support.';
+    } else {
+      statusMessage = 'Local data on this device cleared.';
     }
     await localSave.clear();
     save = await localSave.loadOrCreate();
     dailyClaimedToday = false;
     puzzleActive = false;
+    bloomPruneMode = false;
     screen = AppScreen.welcome;
     notifyListeners();
     return true;
+  }
+
+  /// Guest / local wipe without touching Firebase Auth.
+  Future<void> clearLocalDataOnly() async {
+    puzzleActive = false;
+    bloomPruneMode = false;
+    dailyClaimedToday = false;
+    await localSave.clear();
+    save = await localSave.loadOrCreate();
+    statusMessage = 'Local data on this device cleared.';
+    screen = AppScreen.welcome;
+    notifyListeners();
   }
 
   @override

@@ -130,8 +130,8 @@ class SettingsScreen extends StatelessWidget {
                   ),
                 ),
                 label: const Text('Link Google & sync'),
-              )
-            else if (!guest) ...[
+              ),
+            if (!guest) ...[
               OutlinedButton.icon(
                 onPressed: () async {
                   await app.signOutLocal();
@@ -159,6 +159,17 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ),
             ],
+            if (guest)
+              TextButton(
+                onPressed: () => _confirmClearLocal(context, app),
+                child: Text(
+                  'Clear local data on this device',
+                  style: PetalText.button(context).copyWith(
+                    color: surfaces.danger,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
             const SizedBox(height: PetalSpace.lg),
             Text('Appearance', style: PetalText.section(context)),
             const SizedBox(height: PetalSpace.sm),
@@ -212,7 +223,7 @@ class SettingsScreen extends StatelessWidget {
                   title: 'Music',
                   subtitle: app.audio.hasMusicAsset
                       ? 'Loops while you garden'
-                      : 'Add music_loop.ogg to assets/audio to enable',
+                      : 'Add music_loop.wav (or .ogg) under assets/audio',
                   value: s.musicEnabled,
                   onChanged: (v) =>
                       app.updateSettings(s.copyWith(musicEnabled: v)),
@@ -304,8 +315,10 @@ class SettingsScreen extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         title: Text('Delete account?', style: PetalText.section(ctx)),
         content: Text(
-          'This deletes your Firebase account document and attempts Auth user deletion. '
-          'Local data on this device will reset. This cannot be undone.',
+          'Google Sign-In will open to verify it is you. Then we delete your '
+          'Firebase account, cloud save, and reset local data on this device. '
+          'This cannot be undone.\n\n'
+          'Web help: ${AppConfig.accountDeletionUrl}',
           style: PetalText.body(ctx),
         ),
         actions: [
@@ -320,18 +333,48 @@ class SettingsScreen extends StatelessWidget {
         ],
       ),
     );
-    if (ok == true) {
-      final wiped = await app.deleteAccountAndData();
-      if (!wiped && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              app.statusMessage ?? 'Account deletion failed. Local data kept.',
-            ),
+    if (ok != true) return;
+    final wiped = await app.deleteAccountAndData();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          wiped
+              ? (app.statusMessage ?? 'Account deleted.')
+              : (app.statusMessage ??
+                    'Account deletion failed. Local data kept.'),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmClearLocal(BuildContext context, AppState app) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Clear local data?', style: PetalText.section(ctx)),
+        content: Text(
+          'Resets progress and settings on this device only.',
+          style: PetalText.body(ctx),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
           ),
-        );
-      }
-    }
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await app.clearLocalDataOnly();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(app.statusMessage ?? 'Local data cleared.')),
+    );
   }
 }
 

@@ -47,9 +47,12 @@ Play as a guest with local saves, or sign in with Google to sync progress to the
 
 Soft mist-green gradient, five petal logo mark, wordmark “PetalGrid”, tagline “Grow your garden one block at a time.” No imitation of other puzzle brands.
 
-## Support / legal (OWNER SUPPLY)
+## Support / legal
 
-- Support email: OWNER_SUPPLY  
-- Support URL: OWNER_SUPPLY  
-- Privacy Policy URL: OWNER_SUPPLY  
-- Legal entity: OWNER_SUPPLY  
+- Support email: navaparameetdev@gmail.com  
+- Support URL: https://petalgrid-e7287.web.app/support.html  
+- Privacy Policy URL: https://petalgrid-e7287.web.app/privacy.html  
+- Terms URL: https://petalgrid-e7287.web.app/terms.html  
+- Account deletion URL: https://petalgrid-e7287.web.app/delete-account.html  
+- Legal entity: OWNER_SUPPLY (add company / individual name for Play)  
+

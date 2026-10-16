@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PetalGrid — Delete account</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="wrap">
+    <p class="eyebrow"><a href="/">PetalGrid</a> · Account deletion</p>
+    <h1>Delete your account &amp; data</h1>
+    <p class="lede">
+      Use this page for Google Play’s account-deletion requirement
+      (<code>com.petalgrid.game</code>).
+    </p>
+
+    <section>
+      <h2>In the app (fastest)</h2>
+      <ol>
+        <li>Open PetalGrid and sign in with Google (if you use cloud saves).</li>
+        <li>Go to <strong>Settings</strong> or <strong>Privacy &amp; Legal</strong>.</li>
+        <li>Tap <strong>Delete account &amp; cloud data</strong>.</li>
+        <li>Confirm Google Sign-In when asked (re-authentication), then confirm deletion.</li>
+      </ol>
+      <p>
+        This removes your Firebase Authentication user, deletes your Firestore
+        document at <code>users/{uid}</code>, and clears local saves on that device.
+      </p>
+    </section>
+
+    <section>
+      <h2>Guest / local-only players</h2>
+      <p>
+        If you never signed in, use <strong>Clear local data on this device</strong>
+        in Privacy &amp; Legal / Settings. Uninstalling the app also removes on-device data.
+      </p>
+    </section>
+
+    <section>
+      <h2>Request by email</h2>
+      <p>
+        Email
+        <a href="mailto:navaparameetdev@gmail.com?subject=PetalGrid%20account%20deletion">navaparameetdev@gmail.com</a>
+        from the Google account you used in the app.
+      </p>
+      <p>Include:</p>
+      <ul>
+        <li>Subject: <strong>PetalGrid account deletion</strong></li>
+        <li>The Google email used to sign in</li>
+        <li>Optional: approximate last play date</li>
+      </ul>
+      <p class="meta">
+        We will delete associated Authentication and cloud-save data within a
+        reasonable period (typically within 30 days) after verifying ownership.
+      </p>
+    </section>
+
+    <section>
+      <h2>What is deleted</h2>
+      <ul>
+        <li>Firebase Auth account for PetalGrid</li>
+        <li>Cloud Firestore save under your user ID</li>
+        <li>Local game progress on the device that runs in-app deletion</li>
+      </ul>
+      <p class="meta">
+        Advertising identifiers are managed by Google / your device settings and
+        are not stored as a PetalGrid account profile.
+      </p>
+    </section>
+
+    <nav class="links compact">
+      <a href="/privacy.html">Privacy Policy</a>
+      <a href="/support.html">Support</a>
+    </nav>
+  </main>
+</body>
+</html>

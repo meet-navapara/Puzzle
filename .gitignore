@@ -43,8 +43,11 @@ app.*.map.json
 **/key.properties
 **/*.jks
 **/*.keystore
+**/keystore/
+**/CREDENTIALS.txt
 google-services.json
 GoogleService-Info.plist
+.firebase/
 
 # Android Studio will place build artifacts here
 /android/app/debug

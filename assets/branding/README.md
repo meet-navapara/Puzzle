@@ -1,1 +1,3 @@
-App icon and promo art: generate from BrandLogo / PetalLogoPainter or design originals. Do not use third-party game art.
+- `app_icon.png` / `app_icon_foreground.png` — launcher source (flutter_launcher_icons)
+- Replace with final branded art before marketing campaigns if desired
+- Do not use third-party game art
