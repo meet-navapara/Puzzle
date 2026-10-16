@@ -1,0 +1,40 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function validSave() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['schema', 'campaign', 'classicBest', 'updatedAt'])
+        && data.schema is int
+        && data.schema >= 1
+        && data.schema <= 100
+        && data.classicBest is int
+        && data.classicBest >= 0
+        && data.classicBest <= 100000000
+        && (!('petals' in data.campaign) || (
+             data.campaign.petals is int
+             && data.campaign.petals >= 0
+             && data.campaign.petals <= 10000000
+           ));
+    }
+
+    // Private per-user saves only.
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid) && validSave();
+      allow delete: if isOwner(uid);
+    }
+
+    // Deny everything else by default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
