@@ -97,14 +97,21 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     save = await localSave.loadOrCreate();
     _refreshDailyClaimFlag();
     _applySettings();
-    await auth.initialize();
+    try {
+      await auth.initialize();
+    } catch (e) {
+      debugPrint('auth.initialize failed: $e');
+    }
     _authListener = () => notifyListeners();
     auth.addListener(_authListener!);
-    await connectivity.start();
-    connectivity.addListener(_onConnectivity);
-    if (AppConfig.adsEnabled) {
-      unawaited(ads.initialize());
+    try {
+      await connectivity.start().timeout(
+        AppConfig.connectivityTimeout + const Duration(seconds: 2),
+      );
+    } catch (e) {
+      debugPrint('connectivity.start failed/timed out: $e');
     }
+    connectivity.addListener(_onConnectivity);
     unawaited(audio.warmUp());
     ready = true;
 
@@ -117,6 +124,13 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
       screen = AppScreen.welcome;
     }
     notifyListeners();
+
+    // Init ads after first UI frame so WebView/JavascriptEngine can attach.
+    if (AppConfig.adsEnabled) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(ads.initialize());
+      });
+    }
   }
 
   bool _shouldSkipWelcome() {
@@ -531,12 +545,13 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     final next = st.sectionIndex + 1;
     if (next >= level.sections.length) {
       puzzleActive = false;
+      // Every campaign level clear (including finale): show interstitial.
+      unawaited(ads.showLevelClearInterstitial());
       if (st.levelId == 50) {
         save!.campaign.markVictorySeen();
         screen = AppScreen.campaignVictory;
       } else {
         screen = AppScreen.levelSelect;
-        unawaited(ads.showInterstitialIfAllowed());
       }
       unawaited(persist(clearActive: true));
       advancingSection = false;

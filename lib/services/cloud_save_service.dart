@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
 import '../campaign/progression.dart';
@@ -18,7 +19,7 @@ class CloudSaveService {
   }
 
   Future<LocalSaveSnapshot?> fetch(String uid) async {
-    if (!AppConfig.firebaseEnabled) return null;
+    if (!AppConfig.firebaseEnabled || Firebase.apps.isEmpty) return null;
     try {
       final snap = await _doc(uid).get();
       if (!snap.exists || snap.data() == null) return null;
@@ -30,7 +31,7 @@ class CloudSaveService {
   }
 
   Future<bool> push(String uid, LocalSaveSnapshot snapshot) async {
-    if (!AppConfig.firebaseEnabled) return false;
+    if (!AppConfig.firebaseEnabled || Firebase.apps.isEmpty) return false;
     try {
       final data = snapshot.toJson();
       data['uid'] = uid;
@@ -44,7 +45,7 @@ class CloudSaveService {
   }
 
   Future<bool> deleteCloudData(String uid) async {
-    if (!AppConfig.firebaseEnabled) return false;
+    if (!AppConfig.firebaseEnabled || Firebase.apps.isEmpty) return false;
     try {
       await _doc(uid).delete();
       return true;

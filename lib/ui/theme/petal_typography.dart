@@ -51,6 +51,17 @@ class PetalText {
   static TextStyle score(BuildContext context) =>
       _base(context, size: 16, weight: FontWeight.w800);
 
+  /// Large centered run score (classic / campaign HUD).
+  static TextStyle heroScore(BuildContext context) =>
+      _base(context, size: 44, weight: FontWeight.w800, height: 1.05);
+
+  static TextStyle highScore(BuildContext context) => _base(
+    context,
+    size: 15,
+    weight: FontWeight.w700,
+    color: const Color(0xFFF5C542),
+  );
+
   static TextStyle scoreLabel(BuildContext context) => _base(
     context,
     size: 10,

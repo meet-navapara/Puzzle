@@ -1,8 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../core/app_config.dart';
+import '../core/firebase_bootstrap.dart';
 
 enum AuthStatus { guest, authenticated, signingIn, error }
 
@@ -23,13 +25,21 @@ class AuthService extends ChangeNotifier {
   bool get isAuthenticated => user != null;
   bool get isGuest => user == null;
 
+  bool get _firebaseUsable =>
+      AppConfig.firebaseEnabled &&
+      FirebaseBootstrap.ready &&
+      Firebase.apps.isNotEmpty;
+
   Future<void> initialize() async {
-    if (!AppConfig.firebaseEnabled) {
+    if (!_firebaseUsable) {
       status = AuthStatus.guest;
       notifyListeners();
       return;
     }
     try {
+      await _googleSignIn.initialize(
+        serverClientId: AppConfig.googleWebClientId,
+      );
       _auth ??= FirebaseAuth.instance;
       user = _auth!.currentUser;
       status = user != null ? AuthStatus.authenticated : AuthStatus.guest;
@@ -46,8 +56,10 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<bool> signInWithGoogle() async {
-    if (!AppConfig.firebaseEnabled) {
-      errorMessage = 'Firebase is not configured yet. Enable AppConfig.firebaseEnabled after adding google-services files.';
+    if (!_firebaseUsable) {
+      errorMessage =
+          'Firebase is not ready. Add this PC debug SHA-1 in Firebase Console, '
+          're-download google-services.json, then fully restart the app.';
       status = AuthStatus.error;
       notifyListeners();
       return false;
@@ -57,7 +69,9 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
     try {
       _auth ??= FirebaseAuth.instance;
-      await _googleSignIn.initialize();
+      await _googleSignIn.initialize(
+        serverClientId: AppConfig.googleWebClientId,
+      );
       final account = await _googleSignIn.authenticate();
       final googleAuth = account.authentication;
       final credential = GoogleAuthProvider.credential(
@@ -88,7 +102,7 @@ class AuthService extends ChangeNotifier {
 
   Future<void> signOut() async {
     try {
-      if (AppConfig.firebaseEnabled) {
+      if (_firebaseUsable) {
         await _auth?.signOut();
         await _googleSignIn.signOut();
       }
@@ -100,10 +114,12 @@ class AuthService extends ChangeNotifier {
 
   /// Re-authenticates with Google so sensitive Auth actions (delete) succeed.
   Future<bool> reauthenticateWithGoogle() async {
-    if (!AppConfig.firebaseEnabled || user == null) return false;
+    if (!_firebaseUsable || user == null) return false;
     try {
       _auth ??= FirebaseAuth.instance;
-      await _googleSignIn.initialize();
+      await _googleSignIn.initialize(
+        serverClientId: AppConfig.googleWebClientId,
+      );
       final account = await _googleSignIn.authenticate();
       final googleAuth = account.authentication;
       final credential = GoogleAuthProvider.credential(
@@ -131,7 +147,7 @@ class AuthService extends ChangeNotifier {
   /// Deletes Firebase Auth user. Prefer calling [reauthenticateWithGoogle] first.
   /// Cloud data deletion is handled by CloudSaveService.
   Future<bool> deleteAccount({bool reauthenticateFirst = true}) async {
-    if (!AppConfig.firebaseEnabled || user == null) return false;
+    if (!_firebaseUsable || user == null) return false;
     try {
       if (reauthenticateFirst) {
         final ok = await reauthenticateWithGoogle();

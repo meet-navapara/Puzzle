@@ -1,11 +1,10 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'app.dart';
 import 'core/app_config.dart';
-import 'firebase_options.dart';
+import 'core/firebase_bootstrap.dart';
 import 'state/app_state.dart';
 
 Future<void> main() async {
@@ -15,21 +14,23 @@ Future<void> main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  if (AppConfig.firebaseEnabled) {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-  }
+  final firebaseOk = await FirebaseBootstrap.ensureInitialized();
 
   // ignore: avoid_print
   print(
     'PetalGrid starting (firebaseEnabled=${AppConfig.firebaseEnabled}, '
-    'adsEnabled=${AppConfig.adsEnabled})',
+    'firebaseReady=$firebaseOk, adsEnabled=${AppConfig.adsEnabled}, '
+    'adsUseTestIds=${AppConfig.adsUseTestIds})',
   );
 
   final appState = AppState();
   runApp(
     ChangeNotifierProvider.value(value: appState, child: const PetalGridApp()),
   );
-  await appState.bootstrap();
+  try {
+    await appState.bootstrap();
+  } catch (e, st) {
+    // ignore: avoid_print
+    print('bootstrap failed: $e\n$st');
+  }
 }

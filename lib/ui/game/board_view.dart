@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../game/board.dart';
@@ -26,6 +27,8 @@ class BoardView extends StatelessWidget {
     this.clearCols = const [],
     this.clearToken = 0,
     this.clearActive = false,
+    this.previewClearRows = const [],
+    this.previewClearCols = const [],
     this.reducedMotion = false,
     this.onClearFxFinished,
   });
@@ -46,6 +49,9 @@ class BoardView extends StatelessWidget {
   final List<int> clearCols;
   final int clearToken;
   final bool clearActive;
+  /// Lines that would bloom if the current ghost placement is confirmed.
+  final List<int> previewClearRows;
+  final List<int> previewClearCols;
   final bool reducedMotion;
   final VoidCallback? onClearFxFinished;
 
@@ -113,6 +119,24 @@ class BoardView extends StatelessWidget {
                           onFinished: onClearFxFinished,
                         ),
                       ),
+                    if (ghostValid &&
+                        (previewClearRows.isNotEmpty ||
+                            previewClearCols.isNotEmpty))
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: CustomPaint(
+                            painter: _ClearPreviewPainter(
+                              size: board.size,
+                              rows: previewClearRows,
+                              cols: previewClearCols,
+                              fill: surfaces.accentSoft.withValues(
+                                alpha: isLight ? 0.28 : 0.34,
+                              ),
+                              edge: surfaces.accent.withValues(alpha: 0.9),
+                            ),
+                          ),
+                        ),
+                      ),
                     if (ghostShape != null &&
                         ghostRow != null &&
                         ghostCol != null)
@@ -155,6 +179,54 @@ class BoardView extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ClearPreviewPainter extends CustomPainter {
+  _ClearPreviewPainter({
+    required this.size,
+    required this.rows,
+    required this.cols,
+    required this.fill,
+    required this.edge,
+  });
+
+  final int size;
+  final List<int> rows;
+  final List<int> cols;
+  final Color fill;
+  final Color edge;
+
+  @override
+  void paint(Canvas canvas, Size sz) {
+    if (size <= 0) return;
+    final cell = sz.width / size;
+    final fillPaint = Paint()..color = fill;
+    final edgePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.4
+      ..color = edge;
+
+    for (final r in rows) {
+      final rect = Rect.fromLTWH(1, r * cell + 1, sz.width - 2, cell - 2);
+      final rr = RRect.fromRectAndRadius(rect, const Radius.circular(8));
+      canvas.drawRRect(rr, fillPaint);
+      canvas.drawRRect(rr, edgePaint);
+    }
+    for (final c in cols) {
+      final rect = Rect.fromLTWH(c * cell + 1, 1, cell - 2, sz.height - 2);
+      final rr = RRect.fromRectAndRadius(rect, const Radius.circular(8));
+      canvas.drawRRect(rr, fillPaint);
+      canvas.drawRRect(rr, edgePaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ClearPreviewPainter old) =>
+      old.size != size ||
+      !listEquals(old.rows, rows) ||
+      !listEquals(old.cols, cols) ||
+      old.fill != fill ||
+      old.edge != edge;
 }
 
 class _CellTile extends StatelessWidget {

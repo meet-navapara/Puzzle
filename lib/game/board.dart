@@ -88,6 +88,24 @@ class Board {
     return withCell(row, col, const Cell());
   }
 
+  /// Rows/cols that would bloom if [shape] were placed at the anchor.
+  ClearResult previewClears(
+    PieceShape shape,
+    int anchorRow,
+    int anchorCol,
+    int colorIndex,
+  ) {
+    final placed = tryPlace(shape, anchorRow, anchorCol, colorIndex);
+    if (placed == null) {
+      return const ClearResult(
+        clearedRows: [],
+        clearedCols: [],
+        cellsCleared: 0,
+      );
+    }
+    return placed.findClears();
+  }
+
   ClearResult findClears() {
     final rows = <int>[];
     final cols = <int>[];

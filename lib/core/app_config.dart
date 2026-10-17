@@ -18,6 +18,11 @@ class AppConfig {
   /// Set true only after Firebase options files are installed.
   static const bool firebaseEnabled = true;
 
+  /// Web OAuth client ID from `google-services.json` (`client_type` 3).
+  /// Required by google_sign_in so Firebase Auth receives an ID token.
+  static const String googleWebClientId =
+      '712821429659-c14u3hsv62grq200i9vdofn087uau7jj.apps.googleusercontent.com';
+
   /// Set true to initialize the Mobile Ads SDK.
   static const bool adsEnabled = true;
 
@@ -79,7 +84,9 @@ class AppConfig {
   static String get appOpenAdUnitIos =>
       adsUseTestIds ? _testAppOpenIos : _prodAppOpenIos;
 
-  static const int interstitialMinIntervalSeconds = 180;
+  /// Soft cap for non-level interstitial placements (app-open style paths).
+  /// Level-clear ads bypass this via [AdsService.showLevelClearInterstitial].
+  static const int interstitialMinIntervalSeconds = 30;
   static const int appOpenMinIntervalSeconds = 240;
 
   /// Hosted on Firebase Hosting (petalgrid-e7287).

@@ -58,6 +58,20 @@ void main() {
     });
   });
 
+  group('Clear preview', () {
+    test('previewClears reports row that would bloom', () {
+      var board = Board(size: 4);
+      for (var c = 0; c < 3; c++) {
+        board = board.tryPlace(ShapeCatalog.mono, 0, c, 0)!;
+      }
+      final preview = board.previewClears(ShapeCatalog.mono, 0, 3, 1);
+      expect(preview.clearedRows, [0]);
+      expect(preview.hasClears, isTrue);
+      // Board itself is unchanged until place.
+      expect(board.at(0, 3).filled, isFalse);
+    });
+  });
+
   group('Fit detection', () {
     test('detects no moves', () {
       var board = Board(size: 4);

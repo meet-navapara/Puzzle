@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/app_config.dart';
+import '../../core/firebase_bootstrap.dart';
 import '../../services/auth_service.dart';
 import '../../state/app_state.dart';
 import '../theme/petal_theme.dart';
@@ -15,7 +16,8 @@ class WelcomeScreen extends StatelessWidget {
     final app = context.watch<AppState>();
     final surfaces = PetalSurfaces.of(context);
     final signingIn = app.auth.status == AuthStatus.signingIn;
-    final googleAvailable = AppConfig.firebaseEnabled;
+    final googleAvailable =
+        AppConfig.firebaseEnabled && FirebaseBootstrap.ready;
 
     return GardenBackdrop(
       child: SafeArea(

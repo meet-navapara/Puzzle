@@ -79,10 +79,11 @@ class _GameplayScreenState extends State<GameplayScreen>
     final st = snapshot.state;
     final surfaces = PetalSurfaces.of(context);
     final selected = _resolveSelected(st);
-    final showTip =
+    // Keep tip slot reserved during drag so the board does not jump.
+    final tutorialPending =
         !(app.save?.settings.tutorialSeen ?? true) &&
-        st.phase == GamePhase.playing &&
-        _draggingUid == null;
+        st.phase == GamePhase.playing;
+    final showTip = tutorialPending && _draggingUid == null;
 
     Color? worldAccent;
     if (st.mode == GameMode.campaign && st.levelId != null) {
@@ -101,8 +102,10 @@ class _GameplayScreenState extends State<GameplayScreen>
                 final short = constraints.maxHeight < 640;
                 final trayH = short ? 96.0 : 108.0;
                 final bloomH = 52.0;
-                final headerH = short ? 86.0 : 96.0;
-                final tipH = showTip ? 36.0 : 0.0;
+                // Crown row + hero score + optional objective chips.
+                final headerH = short ? 118.0 : 132.0;
+                // Fixed tip reservation — never depends on drag state.
+                final tipH = tutorialPending ? 36.0 : 0.0;
                 final availableBoard = math.max(
                   180.0,
                   constraints.maxHeight - headerH - trayH - bloomH - tipH - 28,
@@ -114,12 +117,12 @@ class _GameplayScreenState extends State<GameplayScreen>
 
                 return Column(
                   children: [
-                    _TopBar(state: st, onPause: app.pauseGame),
-                    _Hud(
+                    _ScoreBoard(
                       state: st,
                       linesCleared: snapshot.sectionLinesCleared,
                       maxCombo: snapshot.sectionMaxCombo,
                       compact: short,
+                      onPause: app.pauseGame,
                     ),
                     const SizedBox(height: PetalSpace.sm),
                     Expanded(
@@ -134,62 +137,102 @@ class _GameplayScreenState extends State<GameplayScreen>
                               final showGhost = ghost != null &&
                                   ghost.target.overBoard &&
                                   paintPiece != null;
-                              return BoardView(
-                                boardKey: _boardKey,
-                                board: st.board,
-                                ghostShape:
-                                    showGhost ? paintPiece.shape : null,
-                                ghostRow:
-                                    showGhost ? ghost.target.row : null,
-                                ghostCol:
-                                    showGhost ? ghost.target.col : null,
-                                ghostValid: ghost?.target.valid ?? false,
-                                ghostColorIndex: paintPiece?.colorIndex ?? 0,
-                                pruneMode: snapshot.bloomPruneMode,
-                                placePulseCells: _placePulse,
-                                placeScale: _placeScale,
-                                clearRows: _clearRows,
-                                clearCols: _clearCols,
-                                clearToken: _clearToken,
-                                clearActive: _clearActive,
-                                reducedMotion: _reducedMotion,
-                                onClearFxFinished: () {
-                                  if (!mounted) return;
-                                  setState(() {
-                                    _clearActive = false;
-                                    _clearRows = const [];
-                                    _clearCols = const [];
-                                  });
-                                },
-                                onCellTap: (r, c) =>
-                                    _onCellTap(app, st, r, c),
+                              final ghostValid =
+                                  showGhost && ghost.target.valid;
+                              List<int> previewRows = const [];
+                              List<int> previewCols = const [];
+                              if (ghostValid) {
+                                final preview = st.board.previewClears(
+                                  paintPiece.shape,
+                                  ghost.target.row,
+                                  ghost.target.col,
+                                  paintPiece.colorIndex,
+                                );
+                                previewRows = preview.clearedRows;
+                                previewCols = preview.clearedCols;
+                              }
+                              return Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  BoardView(
+                                    boardKey: _boardKey,
+                                    board: st.board,
+                                    ghostShape:
+                                        showGhost ? paintPiece.shape : null,
+                                    ghostRow:
+                                        showGhost ? ghost.target.row : null,
+                                    ghostCol:
+                                        showGhost ? ghost.target.col : null,
+                                    ghostValid: ghostValid,
+                                    ghostColorIndex:
+                                        paintPiece?.colorIndex ?? 0,
+                                    pruneMode: snapshot.bloomPruneMode,
+                                    placePulseCells: _placePulse,
+                                    placeScale: _placeScale,
+                                    clearRows: _clearRows,
+                                    clearCols: _clearCols,
+                                    clearToken: _clearToken,
+                                    clearActive: _clearActive,
+                                    previewClearRows: previewRows,
+                                    previewClearCols: previewCols,
+                                    reducedMotion: _reducedMotion,
+                                    onClearFxFinished: () {
+                                      if (!mounted) return;
+                                      setState(() {
+                                        _clearActive = false;
+                                        _clearRows = const [];
+                                        _clearCols = const [];
+                                      });
+                                    },
+                                    onCellTap: (r, c) =>
+                                        _onCellTap(app, st, r, c),
+                                  ),
+                                  // Overlay hint — never changes Column height.
+                                  Positioned(
+                                    left: 8,
+                                    right: 8,
+                                    bottom: -2,
+                                    child: IgnorePointer(
+                                      child: AnimatedOpacity(
+                                        duration: PetalMotion.tap,
+                                        opacity:
+                                            (_draggingUid != null &&
+                                                ghost != null &&
+                                                ghost.target.overBoard &&
+                                                !ghost.target.valid)
+                                            ? 1
+                                            : 0,
+                                        child: _InvalidHint(
+                                          color: surfaces.danger,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               );
                             },
                           ),
                         ),
                       ),
                     ),
-                    if (showTip)
-                      _CompactTutorialTip(
-                        onDismiss: () {
-                          final s = app.save!.settings;
-                          app.updateSettings(s.copyWith(tutorialSeen: true));
-                        },
+                    if (tutorialPending)
+                      SizedBox(
+                        height: tipH,
+                        child: Opacity(
+                          opacity: showTip ? 1 : 0,
+                          child: IgnorePointer(
+                            ignoring: !showTip,
+                            child: _CompactTutorialTip(
+                              onDismiss: () {
+                                final s = app.save!.settings;
+                                app.updateSettings(
+                                  s.copyWith(tutorialSeen: true),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
                       ),
-                    ValueListenableBuilder<_GhostPaint?>(
-                      valueListenable: _ghostPaint,
-                      builder: (context, ghost, _) {
-                        final show = _draggingUid != null &&
-                            ghost != null &&
-                            ghost.target.overBoard &&
-                            !ghost.target.valid;
-                        if (!show) return const SizedBox.shrink();
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
-                          child: _InvalidHint(color: surfaces.danger),
-                        );
-                      },
-                    ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       child: AnimatedSlide(
@@ -669,60 +712,33 @@ class _InvalidHint extends StatelessWidget {
   }
 }
 
-class _TopBar extends StatelessWidget {
-  const _TopBar({required this.state, required this.onPause});
+/// Clean scoreboard: crown + best (left), pause (right), giant centered score.
+class _ScoreBoard extends StatelessWidget {
+  const _ScoreBoard({
+    required this.state,
+    required this.linesCleared,
+    required this.maxCombo,
+    required this.onPause,
+    this.compact = false,
+  });
+
   final GameState state;
+  final int linesCleared;
+  final int maxCombo;
   final VoidCallback onPause;
+  final bool compact;
+
+  static const Color _bestGold = Color(0xFFF5C542);
 
   @override
   Widget build(BuildContext context) {
     final surfaces = PetalSurfaces.of(context);
-    String title = 'Classic Garden';
+    String? subtitle;
     if (state.mode == GameMode.campaign && state.levelId != null) {
       final level = CampaignCatalog.level(state.levelId!);
-      title = 'Lv ${level.id} · ${level.sections[state.sectionIndex].name}';
+      subtitle = 'Lv ${level.id} · ${level.sections[state.sectionIndex].name}';
     }
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 2, 4, 0),
-      child: Row(
-        children: [
-          IconButton(
-            tooltip: 'Pause',
-            onPressed: onPause,
-            icon: const Icon(Icons.pause_circle_filled_rounded),
-            color: surfaces.accent,
-            iconSize: 32,
-          ),
-          Expanded(
-            child: Text(
-              title,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: PetalText.section(context),
-            ),
-          ),
-          const SizedBox(width: 44),
-        ],
-      ),
-    );
-  }
-}
 
-class _Hud extends StatelessWidget {
-  const _Hud({
-    required this.state,
-    required this.linesCleared,
-    required this.maxCombo,
-    this.compact = false,
-  });
-  final GameState state;
-  final int linesCleared;
-  final int maxCombo;
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
     final objectiveChips = <Widget>[];
     if (state.mode == GameMode.campaign && state.levelId != null) {
       final section =
@@ -782,30 +798,51 @@ class _Hud extends StatelessWidget {
     ];
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      padding: EdgeInsets.fromLTRB(16, compact ? 2 : 4, 8, 0),
       child: Column(
         children: [
           Row(
             children: [
-              Expanded(
-                child: _StatChip(
-                  label: 'Score',
-                  value: '${state.score}',
-                  expanded: true,
-                ),
+              Icon(Icons.workspace_premium_rounded, color: _bestGold, size: 20),
+              const SizedBox(width: 5),
+              Text(
+                '${state.bestScore}',
+                style: PetalText.highScore(context),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _StatChip(
-                  label: 'Best',
-                  value: '${state.bestScore}',
-                  expanded: true,
+              const Spacer(),
+              IconButton(
+                tooltip: 'Pause',
+                onPressed: onPause,
+                visualDensity: VisualDensity.compact,
+                icon: Icon(
+                  Icons.settings_rounded,
+                  color: surfaces.onPanel.withValues(alpha: 0.85),
+                  size: 26,
                 ),
               ),
             ],
           ),
+          SizedBox(height: compact ? 2 : 4),
+          Text(
+            '${state.score}',
+            textAlign: TextAlign.center,
+            style: PetalText.heroScore(context).copyWith(
+              fontSize: compact ? 38 : 44,
+              color: surfaces.onPanel,
+            ),
+          ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: PetalText.caption(context),
+            ),
+          ],
           if (extras.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: compact ? 6 : 8),
             Row(
               children: [
                 for (var i = 0; i < extras.length; i++) ...[
@@ -826,22 +863,17 @@ class _StatChip extends StatelessWidget {
     required this.label,
     required this.value,
     this.accent = false,
-    this.expanded = false,
   });
   final String label;
   final String value;
   final bool accent;
-  final bool expanded;
 
   @override
   Widget build(BuildContext context) {
     final surfaces = PetalSurfaces.of(context);
     return Container(
-      width: expanded ? double.infinity : null,
-      padding: EdgeInsets.symmetric(
-        horizontal: expanded ? 14 : 10,
-        vertical: expanded ? 8 : 5,
-      ),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: accent
             ? surfaces.accentSoft.withValues(alpha: 0.22)
@@ -852,8 +884,7 @@ class _StatChip extends StatelessWidget {
         ),
       ),
       child: Column(
-        crossAxisAlignment:
-            expanded ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(label, style: PetalText.scoreLabel(context)),

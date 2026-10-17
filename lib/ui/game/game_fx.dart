@@ -14,8 +14,8 @@ class PetalFxCopy {
     if (lines == 2) return 'DOUBLE BLOOM';
     if (combo >= 4) return 'COMBO x$combo';
     if (combo >= 3) return 'BLOOM STREAK';
-    if (combo == 2) return 'BLOOM';
-    if (lines == 1) return null; // keep single clears quiet
+    if (combo == 2) return 'SUPERB MOVE';
+    if (lines == 1) return 'NICE MOVE';
     return null;
   }
 }

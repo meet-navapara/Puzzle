@@ -26,7 +26,8 @@ android {
 
     defaultConfig {
         applicationId = "com.petalgrid.game"
-        minSdk = maxOf(flutter.minSdkVersion, 23)
+        // 26+: required by androidx.javascriptengine (AdMob JS engine stability).
+        minSdk = maxOf(flutter.minSdkVersion, 26)
         targetSdk = flutter.targetSdkVersion
         // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
         // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)
@@ -70,4 +71,9 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Helps AdMob avoid "Unable to obtain a JavascriptEngine" on newer devices.
+    implementation("androidx.javascriptengine:javascriptengine:1.0.0")
 }
