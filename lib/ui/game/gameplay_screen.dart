@@ -66,6 +66,7 @@ class _GameplayScreenState extends State<GameplayScreen>
   bool _hintOn = false;
   String _tutorFeedback = '';
   String _tutorMessage = '';
+  bool _awaitingFirstDrag = false;
   int _tutorRun = 0;
 
   @override
@@ -97,6 +98,7 @@ class _GameplayScreenState extends State<GameplayScreen>
     _guidedPlayerMoves = 0;
     _hintOn = false;
     _tutorFeedback = '';
+    _awaitingFirstDrag = false;
     final run = ++_tutorRun;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || run != _tutorRun) return;
@@ -158,44 +160,53 @@ class _GameplayScreenState extends State<GameplayScreen>
     );
   }
 
-  Future<void> _playTutorDemo() async {
+  void _playTutorDemo() {
     final app = context.read<AppState>();
-    final run = _tutorRun;
     final move = TutorialCoach.bestMove(
       app.engine.state,
       preferLineClear: app.engine.state.levelId == 2,
     );
-    if (!mounted || run != _tutorRun) return;
+    if (!mounted) return;
     if (move == null) {
       setState(() => _tutorPhase = TutorialPhase.guided);
+      return;
+    }
+    if (_reducedMotion) {
+      setState(() {
+        _tutorMove = move;
+        _tutorFeedback = '';
+        _handGuideToPlayer();
+      });
       return;
     }
     setState(() {
       _tutorPhase = TutorialPhase.demo;
       _tutorMove = move;
-      _tutorMessage = move.reason;
+      _awaitingFirstDrag = false;
       _tutorFeedback = '';
     });
-    await Future<void>.delayed(const Duration(milliseconds: 900));
-    if (!mounted || run != _tutorRun || _tutorPhase != TutorialPhase.demo) {
-      return;
-    }
-    final placed = app.placePiece(move.pieceUid, move.row, move.col);
-    if (!placed) {
-      setState(() => _tutorPhase = TutorialPhase.guided);
-      _refreshTutorMove();
-      return;
-    }
-    _noteTutorAfterPlace(fromDemo: true);
   }
 
-  void _noteTutorAfterPlace({bool fromDemo = false}) {
+  void _finishGuideDemo() {
+    if (!mounted || _tutorPhase != TutorialPhase.demo) return;
+    setState(_handGuideToPlayer);
+  }
+
+  void _handGuideToPlayer() {
+    _tutorPhase = TutorialPhase.guided;
+    _awaitingFirstDrag = true;
+    _tutorMessage =
+        'These squares are still empty. Drag the glowing piece onto the glow.';
+  }
+
+  void _noteTutorAfterPlace() {
     final app = context.read<AppState>();
     final state = app.engine.state;
     if (state.phase == GamePhase.levelComplete) {
       setState(() {
         _tutorPhase = TutorialPhase.success;
         _tutorMove = null;
+        _awaitingFirstDrag = false;
         _tutorFeedback = '';
       });
       return;
@@ -203,10 +214,7 @@ class _GameplayScreenState extends State<GameplayScreen>
     setState(() {
       _refreshTutorMove();
       _tutorFeedback = '';
-      if (fromDemo) {
-        _tutorPhase = TutorialPhase.explain;
-        return;
-      }
+      _awaitingFirstDrag = false;
       if (_tutorPhase == TutorialPhase.guided) {
         if (state.mode == GameMode.classic) {
           _tutorPhase = TutorialPhase.explain;
@@ -357,6 +365,13 @@ class _GameplayScreenState extends State<GameplayScreen>
                                     guideCells: _showGuideCells
                                         ? _tutorMove!.cells
                                         : const {},
+                                    guideTravel:
+                                        _tutorPhase == TutorialPhase.demo &&
+                                            _tutorMove != null &&
+                                            !_reducedMotion
+                                        ? _tutorMove!.cells.toList()
+                                        : const [],
+                                    onGuideFinished: _finishGuideDemo,
                                     reducedMotion: _reducedMotion,
                                     onClearFxFinished: () {
                                       if (!mounted) return;
@@ -517,11 +532,13 @@ class _GameplayScreenState extends State<GameplayScreen>
                 child: TutorialCoachBanner(
                   phase: _tutorPhase,
                   message: _tutorPhase == TutorialPhase.demo
-                      ? 'Watch the glowing cells. This plant uses the real garden rules.'
+                      ? 'Watch the light trace these empty squares.'
                       : _tutorPhase == TutorialPhase.explain
                       ? _tutorMessage
                       : _tutorPhase == TutorialPhase.practice
                       ? 'Try the next plants yourself. Hint shows one strong move.'
+                      : _awaitingFirstDrag
+                      ? _tutorMessage
                       : (_tutorMove?.reason ??
                           'Drag the glowing piece onto the glowing cells.'),
                   feedback: _tutorFeedback,

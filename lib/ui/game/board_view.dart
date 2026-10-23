@@ -7,6 +7,7 @@ import '../../game/piece.dart';
 import '../theme/petal_theme.dart';
 import 'block_material.dart';
 import 'game_fx.dart';
+import 'guide_light.dart';
 import 'placement_mapper.dart';
 
 class BoardView extends StatelessWidget {
@@ -30,6 +31,8 @@ class BoardView extends StatelessWidget {
     this.previewClearRows = const [],
     this.previewClearCols = const [],
     this.guideCells = const {},
+    this.guideTravel = const [],
+    this.onGuideFinished,
     this.reducedMotion = false,
     this.onClearFxFinished,
   });
@@ -54,6 +57,8 @@ class BoardView extends StatelessWidget {
   final List<int> previewClearRows;
   final List<int> previewClearCols;
   final Set<(int, int)> guideCells;
+  final List<(int, int)> guideTravel;
+  final VoidCallback? onGuideFinished;
   final bool reducedMotion;
   final VoidCallback? onClearFxFinished;
 
@@ -128,12 +133,17 @@ class BoardView extends StatelessWidget {
                             painter: _GuidePainter(
                               size: board.size,
                               cells: guideCells,
-                              fill: surfaces.accent.withValues(
-                                alpha: isLight ? 0.28 : 0.38,
-                              ),
-                              edge: surfaces.accentSoft,
                             ),
                           ),
+                        ),
+                      ),
+                    if (guideTravel.isNotEmpty && onGuideFinished != null)
+                      Positioned.fill(
+                        child: GuideLight(
+                          key: ValueKey(Object.hashAll(guideTravel)),
+                          boardSize: board.size,
+                          cells: guideTravel,
+                          onFinished: onGuideFinished!,
                         ),
                       ),
                     if (ghostValid &&
@@ -199,31 +209,32 @@ class BoardView extends StatelessWidget {
 }
 
 class _GuidePainter extends CustomPainter {
-  _GuidePainter({
-    required this.size,
-    required this.cells,
-    required this.fill,
-    required this.edge,
-  });
+  _GuidePainter({required this.size, required this.cells});
 
   final int size;
   final Set<(int, int)> cells;
-  final Color fill;
-  final Color edge;
+
+  static const _copper = Color(0xFFE0975C);
 
   @override
   void paint(Canvas canvas, Size sz) {
     if (size <= 0) return;
     final cell = sz.width / size;
-    final fillPaint = Paint()..color = fill;
+    const inset = 1.5;
+    final fillPaint = Paint()..color = _copper.withValues(alpha: 0.12);
     final edgePaint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.6
-      ..color = edge;
+      ..strokeWidth = 1.5
+      ..color = _copper.withValues(alpha: 0.7);
     for (final (r, c) in cells) {
       if (r < 0 || c < 0 || r >= size || c >= size) continue;
       final rect = RRect.fromRectAndRadius(
-        Rect.fromLTWH(c * cell + 2, r * cell + 2, cell - 4, cell - 4),
+        Rect.fromLTWH(
+          c * cell + inset,
+          r * cell + inset,
+          cell - inset * 2,
+          cell - inset * 2,
+        ),
         const Radius.circular(8),
       );
       canvas.drawRRect(rect, fillPaint);
@@ -234,8 +245,6 @@ class _GuidePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _GuidePainter old) =>
       old.size != size ||
-      old.fill != fill ||
-      old.edge != edge ||
       old.cells.length != cells.length ||
       !old.cells.containsAll(cells);
 }

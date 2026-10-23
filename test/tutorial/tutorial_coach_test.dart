@@ -7,6 +7,7 @@ import 'package:block_garden/services/local_save_service.dart';
 import 'package:block_garden/state/app_state.dart';
 import 'package:block_garden/tutorial/tutorial_coach.dart';
 import 'package:block_garden/ui/game/gameplay_screen.dart';
+import 'package:block_garden/ui/game/guide_light.dart';
 import 'package:block_garden/ui/screens/main_menu_screen.dart';
 import 'package:block_garden/ui/theme/petal_theme.dart';
 import 'package:flutter/material.dart';
@@ -107,7 +108,7 @@ void main() {
     expect(app.engine.state.phase, GamePhase.playing);
   });
 
-  testWidgets('level 1 demo plants a real piece, then a finished lesson stays off', (
+  testWidgets('level 1 guide leaves the board empty, then the player must drag', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
@@ -134,9 +135,18 @@ void main() {
     expect(find.text('Watch the first move'), findsOneWidget);
     expect(app.engine.state.moveCount, 0);
 
-    await tester.pump(const Duration(milliseconds: 1000));
-    expect(app.engine.state.moveCount, 1);
-    expect(find.text('Why that worked'), findsOneWidget);
+    expect(find.byType(GuideLight), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 1680));
+    await tester.pump();
+    await tester.pump();
+    expect(app.engine.state.moveCount, 0);
+    expect(find.text('Your turn'), findsOneWidget);
+    expect(
+      find.text(
+        'These squares are still empty. Drag the glowing piece onto the glow.',
+      ),
+      findsOneWidget,
+    );
 
     app.completeTutorial(1);
     app.startLevel(1);
