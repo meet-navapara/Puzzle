@@ -17,7 +17,9 @@ class MainMenuScreen extends StatelessWidget {
     final petals = app.save?.campaign.petals ?? 0;
     final best = app.save?.classicBest ?? 0;
 
-    return GardenBackdrop(
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: GardenBackdrop(
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 10, 20, 18),
@@ -54,6 +56,10 @@ class MainMenuScreen extends StatelessWidget {
                                 subtitle: 'Resume your saved mid-run board',
                                 icon: Icons.play_circle_filled_rounded,
                                 onTap: () {
+                                  if (app.guideHomeClassic || app.guideHomeDaily) {
+                                    _guardHome(context, app, () {});
+                                    return;
+                                  }
                                   if (!app.resumeActiveGame() &&
                                       context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
@@ -78,7 +84,8 @@ class MainMenuScreen extends StatelessWidget {
                               icon: Icons.spa_rounded,
                               onTap: app.startClassic,
                               height: tall ? 108 : 90,
-                              emphasized: !app.hasResumableGame,
+                              emphasized: !app.hasResumableGame || app.guideHomeClassic,
+                              coached: app.guideHomeClassic,
                               accent: surfaces.accent,
                             ),
                             const SizedBox(height: 10),
@@ -86,7 +93,7 @@ class MainMenuScreen extends StatelessWidget {
                               title: 'Campaign',
                               subtitle: 'Five worlds · 50 unique gardens',
                               icon: Icons.map_rounded,
-                              onTap: app.openWorldMap,
+                              onTap: () => _guardHome(context, app, app.openWorldMap),
                               height: tall ? 88 : 78,
                               accent: surfaces.accentSoft,
                             ),
@@ -96,8 +103,14 @@ class MainMenuScreen extends StatelessWidget {
                               subtitle:
                                   'Optional rewarded bonus · +15 petals',
                               icon: Icons.water_drop_rounded,
-                              onTap: () => app.go(AppScreen.daily),
+                              onTap: () => _guardHome(
+                                context,
+                                app,
+                                () => app.go(AppScreen.daily),
+                                allowWhen: app.guideHomeDaily,
+                              ),
                               height: tall ? 88 : 78,
+                              coached: app.guideHomeDaily,
                               accent: surfaces.blockPalette[2],
                             ),
                             SizedBox(height: tall ? 20 : 12),
@@ -125,11 +138,44 @@ class MainMenuScreen extends StatelessWidget {
                   },
                 ),
               ),
+              if (app.guideHomeClassic || app.guideHomeDaily)
+                _HomeCoach(
+                  daily: app.guideHomeDaily,
+                  onSkip: () {
+                    if (app.guideHomeClassic) {
+                      app.completeClassicTour();
+                    } else {
+                      app.completeDailyTour();
+                    }
+                  },
+                ),
             ],
           ),
         ),
       ),
+      ),
     );
+  }
+
+  void _guardHome(
+    BuildContext context,
+    AppState app,
+    VoidCallback action, {
+    bool allowWhen = false,
+  }) {
+    if ((app.guideHomeClassic || app.guideHomeDaily) && !allowWhen) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            app.guideHomeClassic
+                ? 'Tap the glowing Classic Garden card to begin.'
+                : 'Tap the glowing Daily Dew card next.',
+          ),
+        ),
+      );
+      return;
+    }
+    action();
   }
 
   void _showTutorial(BuildContext context, AppState app) {
@@ -176,6 +222,54 @@ class MainMenuScreen extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _HomeCoach extends StatelessWidget {
+  const _HomeCoach({required this.daily, required this.onSkip});
+
+  final bool daily;
+  final VoidCallback onSkip;
+
+  @override
+  Widget build(BuildContext context) {
+    final surfaces = PetalSurfaces.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: surfaces.panel,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: surfaces.accentSoft),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                daily ? 'Step 2 · Daily Dew' : 'Step 1 · Classic Garden',
+                style: PetalText.caption(context).copyWith(
+                  color: surfaces.accent,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                daily
+                    ? 'Daily Dew is optional. Tap the glowing card. You claim the petals yourself.'
+                    : 'Classic Garden never ends. Tap the glowing card, then plant the highlighted piece yourself.',
+                style: PetalText.body(context).copyWith(height: 1.35),
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(onPressed: onSkip, child: const Text('Skip')),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -355,6 +449,7 @@ class _FeatureCard extends StatelessWidget {
     required this.height,
     required this.accent,
     this.emphasized = false,
+    this.coached = false,
   });
 
   final String title;
@@ -364,6 +459,7 @@ class _FeatureCard extends StatelessWidget {
   final double height;
   final Color accent;
   final bool emphasized;
+  final bool coached;
 
   @override
   Widget build(BuildContext context) {
@@ -393,8 +489,10 @@ class _FeatureCard extends StatelessWidget {
                 ],
               ),
               border: Border.all(
-                color: accent.withValues(alpha: emphasized ? 0.5 : 0.32),
-                width: emphasized ? 1.3 : 1.1,
+                color: coached
+                    ? surfaces.accentSoft
+                    : accent.withValues(alpha: emphasized ? 0.5 : 0.32),
+                width: coached ? 2.4 : (emphasized ? 1.3 : 1.1),
               ),
               boxShadow: [
                 BoxShadow(

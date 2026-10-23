@@ -172,6 +172,39 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ),
             const SizedBox(height: PetalSpace.lg),
+            Text('Garden lessons', style: PetalText.section(context)),
+            const SizedBox(height: PetalSpace.sm),
+            Text(
+              'Replay a lesson any time. You perform each highlighted step yourself.',
+              style: PetalText.supporting(context),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () => app.replayTutorial(1),
+              icon: const Icon(Icons.school_rounded),
+              label: const Text('Replay level 1 lesson'),
+            ),
+            if (app.save!.campaign.progressOf(2).unlocked) ...[
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () => app.replayTutorial(2),
+                icon: const Icon(Icons.school_outlined),
+                label: const Text('Replay level 2 lesson'),
+              ),
+            ],
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: app.replayClassicLesson,
+              icon: const Icon(Icons.spa_rounded),
+              label: const Text('Replay Classic lesson'),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: app.replayDailyLesson,
+              icon: const Icon(Icons.water_drop_rounded),
+              label: const Text('Replay Daily Dew lesson'),
+            ),
+            const SizedBox(height: PetalSpace.lg),
             Text('Appearance', style: PetalText.section(context)),
             const SizedBox(height: PetalSpace.sm),
             SegmentedButton<AppThemePreference>(

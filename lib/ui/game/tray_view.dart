@@ -16,6 +16,7 @@ class TrayView extends StatelessWidget {
     required this.onDragUpdate,
     required this.onDragEnd,
     this.trayHeight = 108,
+    this.highlightUid,
   });
 
   final List<TrayPiece> pieces;
@@ -26,6 +27,7 @@ class TrayView extends StatelessWidget {
   final void Function(TrayPiece piece, Offset globalPosition) onDragUpdate;
   final void Function(TrayPiece piece) onDragEnd;
   final double trayHeight;
+  final String? highlightUid;
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +44,7 @@ class TrayView extends StatelessWidget {
                   piece: p,
                   selected: p.uid == selectedUid,
                   dragging: p.uid == draggingUid,
+                  highlighted: p.uid == highlightUid,
                   onSelect: onSelect,
                   onDragStarted: onDragStarted,
                   onDragUpdate: onDragUpdate,
@@ -64,6 +67,7 @@ class _TraySlot extends StatelessWidget {
     required this.onDragStarted,
     required this.onDragUpdate,
     required this.onDragEnd,
+    required this.highlighted,
   });
 
   final TrayPiece piece;
@@ -73,6 +77,7 @@ class _TraySlot extends StatelessWidget {
   final void Function(TrayPiece piece, Offset globalPosition) onDragStarted;
   final void Function(TrayPiece piece, Offset globalPosition) onDragUpdate;
   final void Function(TrayPiece piece) onDragEnd;
+  final bool highlighted;
 
   @override
   Widget build(BuildContext context) {
@@ -101,7 +106,22 @@ class _TraySlot extends StatelessWidget {
           },
           onPanEnd: (_) => onDragEnd(piece),
           onPanCancel: () => onDragEnd(piece),
-          child: Center(child: visual),
+          child: Center(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.all(4),
+              decoration: highlighted
+                  ? BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.secondary,
+                        width: 2,
+                      ),
+                    )
+                  : null,
+              child: visual,
+            ),
+          ),
         );
       },
     );

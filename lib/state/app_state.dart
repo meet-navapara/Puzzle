@@ -74,6 +74,15 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   bool advancingSection = false;
   bool showingSectionIntro = false;
 
+  /// When set, the next start of this campaign level replays its lesson.
+  int? replayTutorialLevelId;
+
+  /// Bumps whenever a level boots so the lesson can restart on the same seed.
+  int tutorialSession = 0;
+
+  bool replayClassicTour = false;
+  bool replayDailyTour = false;
+
   // Campaign runtime objective tracking beyond score.
   int sectionLinesCleared = 0;
   int sectionMaxCombo = 0;
@@ -346,6 +355,7 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     sectionLinesCleared = 0;
     sectionMaxCombo = 0;
     statusMessage = null;
+    tutorialSession++;
     screen = AppScreen.gameplay;
     unawaited(persist(activeGame: engine.state));
     notifyListeners();
@@ -388,7 +398,116 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
   }
 
+  /// True when campaign level 1 or 2 should open the interactive lesson.
+  bool shouldGuideLevel(int? levelId) {
+    if (levelId != 1 && levelId != 2) return false;
+    if (!engine.hasStarted || engine.state.mode != GameMode.campaign) {
+      return false;
+    }
+    if (engine.state.levelId != levelId) return false;
+    if (replayTutorialLevelId == levelId) return true;
+    final settings = save?.settings;
+    if (settings == null || save == null) return false;
+    if (levelId == 1 && settings.tutorialLevel1Done) return false;
+    if (levelId == 2 && settings.tutorialLevel2Done) return false;
+    if (save!.campaign.progressOf(levelId!).completed) return false;
+    return true;
+  }
+
+  void completeTutorial(int levelId) {
+    replayTutorialLevelId = null;
+    final settings = save?.settings;
+    if (settings == null) return;
+    if (levelId == 1 && !settings.tutorialLevel1Done) {
+      updateSettings(settings.copyWith(tutorialLevel1Done: true));
+    } else if (levelId == 2 && !settings.tutorialLevel2Done) {
+      updateSettings(settings.copyWith(tutorialLevel2Done: true));
+    } else {
+      notifyListeners();
+    }
+  }
+
+  bool get guideHomeClassic {
+    if (replayClassicTour) return false;
+    final settings = save?.settings;
+    if (settings == null) return false;
+    if (settings.tutorialClassicDone) return false;
+    if ((save?.classicBest ?? 0) > 0) return false;
+    return true;
+  }
+
+  bool get guideHomeDaily {
+    if (replayDailyTour) return false;
+    final settings = save?.settings;
+    if (settings == null || save == null) return false;
+    if (settings.tutorialDailyDone) return false;
+    if (save!.lastDailyClaimUtc != null) return false;
+    if (!settings.tutorialClassicDone && (save!.classicBest == 0)) {
+      return false;
+    }
+    return true;
+  }
+
+  bool get shouldGuideClassic {
+    if (!engine.hasStarted || engine.state.mode != GameMode.classic) {
+      return false;
+    }
+    if (replayClassicTour) return true;
+    final settings = save?.settings;
+    if (settings == null) return false;
+    if (settings.tutorialClassicDone) return false;
+    if ((save?.classicBest ?? 0) > 0 && !replayClassicTour) return false;
+    return true;
+  }
+
+  bool get shouldGuideDaily {
+    if (replayDailyTour) return true;
+    final settings = save?.settings;
+    if (settings == null) return false;
+    return !settings.tutorialDailyDone;
+  }
+
+  void completeClassicTour() {
+    replayClassicTour = false;
+    final settings = save?.settings;
+    if (settings == null || settings.tutorialClassicDone) {
+      notifyListeners();
+      return;
+    }
+    updateSettings(settings.copyWith(tutorialClassicDone: true));
+  }
+
+  void completeDailyTour() {
+    replayDailyTour = false;
+    final settings = save?.settings;
+    if (settings == null || settings.tutorialDailyDone) {
+      notifyListeners();
+      return;
+    }
+    updateSettings(settings.copyWith(tutorialDailyDone: true));
+  }
+
+  void replayClassicLesson() {
+    replayClassicTour = true;
+    startClassic();
+  }
+
+  void replayDailyLesson() {
+    replayDailyTour = true;
+    screen = AppScreen.daily;
+    notifyListeners();
+  }
+
+  void replayTutorial(int levelId) {
+    if (levelId != 1 && levelId != 2) return;
+    final progress = save?.campaign.progressOf(levelId);
+    if (progress == null || !progress.unlocked) return;
+    replayTutorialLevelId = levelId;
+    startLevel(levelId);
+  }
+
   void startLevel(int levelId, {int sectionIndex = 0}) {
+    if (replayTutorialLevelId != levelId) replayTutorialLevelId = null;
     if (!_gateOnline()) return;
     final progress = save!.campaign.progressOf(levelId);
     if (!progress.unlocked) return;
@@ -398,6 +517,7 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     campaignSectionIndex = sectionIndex;
     levelRunScore = sectionIndex == 0 ? 0 : levelRunScore;
     if (sectionIndex == 0) levelRunScore = 0;
+    tutorialSession++;
     _bootSection(level, sectionIndex);
   }
 

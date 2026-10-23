@@ -105,8 +105,57 @@ class DailyScreen extends StatelessWidget {
                 ),
               ],
               const Spacer(),
+              if (app.shouldGuideDaily) ...[
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: surfaces.panel,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: surfaces.accentSoft, width: 1.6),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Your step',
+                          style: PetalText.caption(context).copyWith(
+                            color: surfaces.accent,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          claimed
+                              ? 'You already collected today’s dew. Tap Continue.'
+                              : 'Tap Watch & Claim yourself. Petals are added only after the ad finishes. Once a day.',
+                          style: PetalText.body(context).copyWith(height: 1.35),
+                        ),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: app.completeDailyTour,
+                            child: Text(claimed ? 'Continue' : 'Skip'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
               ElevatedButton(
-                onPressed: claimed ? null : () => app.claimDailyBonus(),
+                style: app.shouldGuideDaily && !claimed
+                    ? ElevatedButton.styleFrom(
+                        side: BorderSide(color: surfaces.accentSoft, width: 2),
+                      )
+                    : null,
+                onPressed: claimed
+                    ? null
+                    : () {
+                        app.claimDailyBonus();
+                        if (app.shouldGuideDaily) app.completeDailyTour();
+                      },
                 child: Text(
                   claimed ? 'Already claimed today' : 'Watch & Claim',
                 ),

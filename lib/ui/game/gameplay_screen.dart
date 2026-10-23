@@ -18,6 +18,9 @@ import 'game_fx.dart';
 import 'piece_visual.dart';
 import 'placement_mapper.dart';
 import 'tray_view.dart';
+import 'tutorial_layer.dart';
+import '../../tutorial/tutorial_coach.dart';
+import '../../tutorial/tutorial_copy.dart';
 
 class GameplayScreen extends StatefulWidget {
   const GameplayScreen({super.key});
@@ -55,12 +58,188 @@ class _GameplayScreenState extends State<GameplayScreen>
   int _fxGeneration = 0;
   bool _rejectShake = false;
 
+  TutorialPhase _tutorPhase = TutorialPhase.inactive;
+  int _tutorCard = 0;
+  int? _tutorLevelId;
+  TutorialMove? _tutorMove;
+  int _guidedPlayerMoves = 0;
+  bool _hintOn = false;
+  String _tutorFeedback = '';
+  String _tutorMessage = '';
+  int _tutorRun = 0;
+
   @override
   void dispose() {
     _removeDragOverlay();
     _ghostPaint.dispose();
     _fingerGlobal.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final app = context.read<AppState>();
+    final started = app.engine.hasStarted;
+    final id = started ? app.engine.state.levelId : null;
+    final seed = started ? app.engine.state.seed : null;
+    final classic = started && app.engine.state.mode == GameMode.classic;
+    final key = classic
+        ? Object.hash('classic', seed, app.tutorialSession)
+        : id == null
+        ? null
+        : Object.hash(id, seed, app.tutorialSession);
+    if (key == _tutorLevelId) return;
+    _tutorLevelId = key;
+    _tutorPhase = TutorialPhase.inactive;
+    _tutorCard = 0;
+    _tutorMove = null;
+    _guidedPlayerMoves = 0;
+    _hintOn = false;
+    _tutorFeedback = '';
+    final run = ++_tutorRun;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || run != _tutorRun) return;
+      _maybeStartTutorial();
+    });
+  }
+
+  bool get _tutorLock =>
+      _tutorPhase == TutorialPhase.cards ||
+      _tutorPhase == TutorialPhase.demo ||
+      _tutorPhase == TutorialPhase.explain ||
+      _tutorPhase == TutorialPhase.success;
+
+  bool get _showGuideCells =>
+      _tutorMove != null &&
+      (_tutorPhase == TutorialPhase.demo ||
+          _tutorPhase == TutorialPhase.guided ||
+          (_tutorPhase == TutorialPhase.practice && _hintOn));
+
+  void _maybeStartTutorial() {
+    final app = context.read<AppState>();
+    if (!app.engine.hasStarted) return;
+    final id = app.engine.state.levelId;
+    if (app.shouldGuideClassic) {
+      setState(() {
+        _tutorFeedback = '';
+        _tutorMessage =
+            'Drag the glowing piece onto the glowing cells. You make this move.';
+        _refreshTutorMove();
+        _tutorPhase = TutorialPhase.guided;
+      });
+      return;
+    }
+    if (!app.shouldGuideLevel(id)) return;
+    app.dismissSectionIntro();
+    final resume = app.engine.state.moveCount > 0;
+    setState(() {
+      _tutorFeedback = '';
+      if (!resume) {
+        _tutorPhase = TutorialPhase.cards;
+        _tutorCard = 0;
+        return;
+      }
+      _tutorMove = TutorialCoach.bestMove(
+        app.engine.state,
+        preferLineClear: id == 2,
+      );
+      _tutorPhase = id == 2 && app.engine.state.moveCount >= 3
+          ? TutorialPhase.practice
+          : TutorialPhase.guided;
+    });
+  }
+
+  void _refreshTutorMove() {
+    final state = context.read<AppState>().engine.state;
+    _tutorMove = TutorialCoach.bestMove(
+      state,
+      preferLineClear: state.levelId == 2,
+    );
+  }
+
+  Future<void> _playTutorDemo() async {
+    final app = context.read<AppState>();
+    final run = _tutorRun;
+    final move = TutorialCoach.bestMove(
+      app.engine.state,
+      preferLineClear: app.engine.state.levelId == 2,
+    );
+    if (!mounted || run != _tutorRun) return;
+    if (move == null) {
+      setState(() => _tutorPhase = TutorialPhase.guided);
+      return;
+    }
+    setState(() {
+      _tutorPhase = TutorialPhase.demo;
+      _tutorMove = move;
+      _tutorMessage = move.reason;
+      _tutorFeedback = '';
+    });
+    await Future<void>.delayed(const Duration(milliseconds: 900));
+    if (!mounted || run != _tutorRun || _tutorPhase != TutorialPhase.demo) {
+      return;
+    }
+    final placed = app.placePiece(move.pieceUid, move.row, move.col);
+    if (!placed) {
+      setState(() => _tutorPhase = TutorialPhase.guided);
+      _refreshTutorMove();
+      return;
+    }
+    _noteTutorAfterPlace(fromDemo: true);
+  }
+
+  void _noteTutorAfterPlace({bool fromDemo = false}) {
+    final app = context.read<AppState>();
+    final state = app.engine.state;
+    if (state.phase == GamePhase.levelComplete) {
+      setState(() {
+        _tutorPhase = TutorialPhase.success;
+        _tutorMove = null;
+        _tutorFeedback = '';
+      });
+      return;
+    }
+    setState(() {
+      _refreshTutorMove();
+      _tutorFeedback = '';
+      if (fromDemo) {
+        _tutorPhase = TutorialPhase.explain;
+        return;
+      }
+      if (_tutorPhase == TutorialPhase.guided) {
+        if (state.mode == GameMode.classic) {
+          _tutorPhase = TutorialPhase.explain;
+          _tutorMessage =
+              'You planted it yourself. Fill a whole row or column and it blooms. Classic has no level end — the crown is your best score.';
+          _tutorMove = null;
+          return;
+        }
+        _guidedPlayerMoves++;
+        if (state.levelId == 2 && _guidedPlayerMoves >= 2) {
+          _tutorPhase = TutorialPhase.practice;
+          _hintOn = false;
+          _tutorMove = null;
+        }
+      } else if (_tutorPhase == TutorialPhase.practice && _hintOn) {
+        _refreshTutorMove();
+      }
+    });
+  }
+
+  void _skipTutorial() {
+    final app = context.read<AppState>();
+    if (app.engine.hasStarted && app.engine.state.mode == GameMode.classic) {
+      app.completeClassicTour();
+    } else {
+      final id = app.engine.state.levelId;
+      if (id != null) app.completeTutorial(id);
+    }
+    setState(() {
+      _tutorPhase = TutorialPhase.inactive;
+      _tutorMove = null;
+      _tutorFeedback = '';
+    });
   }
 
   bool get _reducedMotion {
@@ -175,6 +354,9 @@ class _GameplayScreenState extends State<GameplayScreen>
                                     clearActive: _clearActive,
                                     previewClearRows: previewRows,
                                     previewClearCols: previewCols,
+                                    guideCells: _showGuideCells
+                                        ? _tutorMove!.cells
+                                        : const {},
                                     reducedMotion: _reducedMotion,
                                     onClearFxFinished: () {
                                       if (!mounted) return;
@@ -245,6 +427,9 @@ class _GameplayScreenState extends State<GameplayScreen>
                           pieces: st.tray,
                           selectedUid: _selectedUid,
                           draggingUid: _draggingUid,
+                          highlightUid: _showGuideCells
+                              ? _tutorMove!.pieceUid
+                              : null,
                           trayHeight: trayH,
                           onSelect: (p) {
                             _ghostPaint.value = null;
@@ -321,7 +506,80 @@ class _GameplayScreenState extends State<GameplayScreen>
                   reducedMotion: _reducedMotion,
                 ),
               ),
+            if (_tutorPhase == TutorialPhase.demo ||
+                _tutorPhase == TutorialPhase.explain ||
+                _tutorPhase == TutorialPhase.guided ||
+                _tutorPhase == TutorialPhase.practice)
+              Positioned(
+                left: 12,
+                right: 12,
+                bottom: MediaQuery.sizeOf(context).height < 700 ? 148 : 176,
+                child: TutorialCoachBanner(
+                  phase: _tutorPhase,
+                  message: _tutorPhase == TutorialPhase.demo
+                      ? 'Watch the glowing cells. This plant uses the real garden rules.'
+                      : _tutorPhase == TutorialPhase.explain
+                      ? _tutorMessage
+                      : _tutorPhase == TutorialPhase.practice
+                      ? 'Try the next plants yourself. Hint shows one strong move.'
+                      : (_tutorMove?.reason ??
+                          'Drag the glowing piece onto the glowing cells.'),
+                  feedback: _tutorFeedback,
+                  showHint: _tutorPhase == TutorialPhase.practice,
+                  hintOn: _hintOn,
+                  onSkip: _skipTutorial,
+                  onContinue: () {
+                    final live = context.read<AppState>();
+                    if (live.engine.state.mode == GameMode.classic) {
+                      live.completeClassicTour();
+                      setState(() {
+                        _tutorPhase = TutorialPhase.inactive;
+                        _tutorMove = null;
+                        _tutorFeedback = '';
+                      });
+                      return;
+                    }
+                    setState(() {
+                      _tutorPhase = TutorialPhase.guided;
+                      _tutorFeedback = '';
+                      _refreshTutorMove();
+                    });
+                  },
+                  onToggleHint: () {
+                    setState(() {
+                      _hintOn = !_hintOn;
+                      if (_hintOn) {
+                        _refreshTutorMove();
+                      } else {
+                        _tutorMove = null;
+                      }
+                    });
+                  },
+                ),
+              ),
+            if (_tutorPhase == TutorialPhase.cards ||
+                _tutorPhase == TutorialPhase.success)
+              Positioned.fill(
+                child: TutorialCardOverlay(
+                  phase: _tutorPhase,
+                  cardIndex: _tutorCard,
+                  levelId: st.levelId ?? 1,
+                  onBack: () => setState(() {
+                    if (_tutorCard > 0) _tutorCard--;
+                  }),
+                  onNext: () {
+                    if (_tutorCard < TutorialCopy.cards.length - 1) {
+                      setState(() => _tutorCard++);
+                    } else {
+                      _playTutorDemo();
+                    }
+                  },
+                  onSkip: _skipTutorial,
+                  onContinueSuccess: _skipTutorial,
+                ),
+              ),
             if (snapshot.showingSectionIntro &&
+                _tutorPhase == TutorialPhase.inactive &&
                 st.phase == GamePhase.playing)
               _SectionIntroOverlay(
                 text: st.sectionIntro,
@@ -331,7 +589,8 @@ class _GameplayScreenState extends State<GameplayScreen>
             if (st.phase == GamePhase.connectionPaused)
               const _ConnectionOverlay(),
             if (st.phase == GamePhase.gameOver) _GameOverOverlay(app: app),
-            if (st.phase == GamePhase.levelComplete)
+            if (st.phase == GamePhase.levelComplete &&
+                _tutorPhase != TutorialPhase.success)
               _LevelCompleteOverlay(app: app),
           ],
         ),
@@ -360,6 +619,16 @@ class _GameplayScreenState extends State<GameplayScreen>
   }
 
   void _beginDrag(TrayPiece piece, Offset global) {
+    if (_tutorLock) return;
+    if (_tutorPhase == TutorialPhase.guided &&
+        _tutorMove != null &&
+        piece.uid != _tutorMove!.pieceUid) {
+      setState(() {
+        _tutorFeedback = 'Use the glowing piece in the tray.';
+      });
+      _playReject();
+      return;
+    }
     _dragSessionClosed = false;
     _lastPointerGlobal = global;
     _dragPiece = piece;
@@ -469,7 +738,7 @@ class _GameplayScreenState extends State<GameplayScreen>
   }
 
   void _onCellTap(AppState app, GameState st, int r, int c) {
-    if (_draggingUid != null) return;
+    if (_tutorLock || _draggingUid != null) return;
     if (app.bloomPruneMode) {
       app.pruneAt(r, c);
       return;
@@ -495,12 +764,32 @@ class _GameplayScreenState extends State<GameplayScreen>
   }
 
   void _tryPlace(AppState app, String uid, int row, int col) {
+    if (_tutorLock) return;
+    if (_tutorPhase == TutorialPhase.guided &&
+        _tutorMove != null &&
+        !_tutorMove!.matches(uid, row, col)) {
+      setState(() {
+        _tutorFeedback = 'Not quite — plant on the glowing cells.';
+      });
+      _playReject();
+      return;
+    }
     final before = app.engine.state;
     final ok = app.placePiece(uid, row, col);
     if (!ok) {
       _ghostPaint.value = null;
+      if (_tutorPhase == TutorialPhase.guided ||
+          _tutorPhase == TutorialPhase.practice) {
+        setState(() {
+          _tutorFeedback = 'That spot does not fit. Try an open group of cells.';
+        });
+      }
       _playReject();
       return;
+    }
+    if (_tutorPhase == TutorialPhase.guided ||
+        _tutorPhase == TutorialPhase.practice) {
+      _noteTutorAfterPlace();
     }
     final after = app.engine.state;
     final event = after.lastEvent;

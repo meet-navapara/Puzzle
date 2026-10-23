@@ -19,6 +19,10 @@ class PlayerSettings {
     this.privacyAccepted = false,
     this.themePreference = AppThemePreference.dark,
     this.welcomeSeen = false,
+    this.tutorialLevel1Done = false,
+    this.tutorialLevel2Done = false,
+    this.tutorialClassicDone = false,
+    this.tutorialDailyDone = false,
   });
 
   final bool soundEnabled;
@@ -34,6 +38,18 @@ class PlayerSettings {
   /// When true, cold start skips Welcome and opens Main Menu.
   final bool welcomeSeen;
 
+  /// Interactive lesson on campaign level 1 has been finished or skipped.
+  final bool tutorialLevel1Done;
+
+  /// Interactive lesson on campaign level 2 has been finished or skipped.
+  final bool tutorialLevel2Done;
+
+  /// First Classic Garden visit has been guided or skipped.
+  final bool tutorialClassicDone;
+
+  /// First Daily Dew visit has been guided or skipped.
+  final bool tutorialDailyDone;
+
   PlayerSettings copyWith({
     bool? soundEnabled,
     bool? musicEnabled,
@@ -45,6 +61,10 @@ class PlayerSettings {
     bool? privacyAccepted,
     AppThemePreference? themePreference,
     bool? welcomeSeen,
+    bool? tutorialLevel1Done,
+    bool? tutorialLevel2Done,
+    bool? tutorialClassicDone,
+    bool? tutorialDailyDone,
   }) => PlayerSettings(
     soundEnabled: soundEnabled ?? this.soundEnabled,
     musicEnabled: musicEnabled ?? this.musicEnabled,
@@ -56,6 +76,10 @@ class PlayerSettings {
     privacyAccepted: privacyAccepted ?? this.privacyAccepted,
     themePreference: themePreference ?? this.themePreference,
     welcomeSeen: welcomeSeen ?? this.welcomeSeen,
+    tutorialLevel1Done: tutorialLevel1Done ?? this.tutorialLevel1Done,
+    tutorialLevel2Done: tutorialLevel2Done ?? this.tutorialLevel2Done,
+    tutorialClassicDone: tutorialClassicDone ?? this.tutorialClassicDone,
+    tutorialDailyDone: tutorialDailyDone ?? this.tutorialDailyDone,
   );
 
   Map<String, dynamic> toJson() => {
@@ -69,6 +93,10 @@ class PlayerSettings {
     'privacy': privacyAccepted,
     'theme': themePreference.name,
     'welcomeSeen': welcomeSeen,
+    'tutorialL1': tutorialLevel1Done,
+    'tutorialL2': tutorialLevel2Done,
+    'tutorialClassic': tutorialClassicDone,
+    'tutorialDaily': tutorialDailyDone,
   };
 
   factory PlayerSettings.fromJson(Map<String, dynamic> json) {
@@ -88,6 +116,10 @@ class PlayerSettings {
       privacyAccepted: json['privacy'] as bool? ?? false,
       themePreference: theme,
       welcomeSeen: json['welcomeSeen'] as bool? ?? false,
+      tutorialLevel1Done: json['tutorialL1'] as bool? ?? false,
+      tutorialLevel2Done: json['tutorialL2'] as bool? ?? false,
+      tutorialClassicDone: json['tutorialClassic'] as bool? ?? false,
+      tutorialDailyDone: json['tutorialDaily'] as bool? ?? false,
     );
   }
 }

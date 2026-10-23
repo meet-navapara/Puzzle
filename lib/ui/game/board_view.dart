@@ -29,6 +29,7 @@ class BoardView extends StatelessWidget {
     this.clearActive = false,
     this.previewClearRows = const [],
     this.previewClearCols = const [],
+    this.guideCells = const {},
     this.reducedMotion = false,
     this.onClearFxFinished,
   });
@@ -52,6 +53,7 @@ class BoardView extends StatelessWidget {
   /// Lines that would bloom if the current ghost placement is confirmed.
   final List<int> previewClearRows;
   final List<int> previewClearCols;
+  final Set<(int, int)> guideCells;
   final bool reducedMotion;
   final VoidCallback? onClearFxFinished;
 
@@ -119,6 +121,21 @@ class BoardView extends StatelessWidget {
                           onFinished: onClearFxFinished,
                         ),
                       ),
+                    if (guideCells.isNotEmpty)
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: CustomPaint(
+                            painter: _GuidePainter(
+                              size: board.size,
+                              cells: guideCells,
+                              fill: surfaces.accent.withValues(
+                                alpha: isLight ? 0.28 : 0.38,
+                              ),
+                              edge: surfaces.accentSoft,
+                            ),
+                          ),
+                        ),
+                      ),
                     if (ghostValid &&
                         (previewClearRows.isNotEmpty ||
                             previewClearCols.isNotEmpty))
@@ -179,6 +196,48 @@ class BoardView extends StatelessWidget {
       ),
     );
   }
+}
+
+class _GuidePainter extends CustomPainter {
+  _GuidePainter({
+    required this.size,
+    required this.cells,
+    required this.fill,
+    required this.edge,
+  });
+
+  final int size;
+  final Set<(int, int)> cells;
+  final Color fill;
+  final Color edge;
+
+  @override
+  void paint(Canvas canvas, Size sz) {
+    if (size <= 0) return;
+    final cell = sz.width / size;
+    final fillPaint = Paint()..color = fill;
+    final edgePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.6
+      ..color = edge;
+    for (final (r, c) in cells) {
+      if (r < 0 || c < 0 || r >= size || c >= size) continue;
+      final rect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(c * cell + 2, r * cell + 2, cell - 4, cell - 4),
+        const Radius.circular(8),
+      );
+      canvas.drawRRect(rect, fillPaint);
+      canvas.drawRRect(rect, edgePaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _GuidePainter old) =>
+      old.size != size ||
+      old.fill != fill ||
+      old.edge != edge ||
+      old.cells.length != cells.length ||
+      !old.cells.containsAll(cells);
 }
 
 class _ClearPreviewPainter extends CustomPainter {
