@@ -12,6 +12,8 @@ val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+} else {
+    logger.warn("android/key.properties not found: release builds are DEBUG-signed and Google Play will reject them.")
 }
 
 android {

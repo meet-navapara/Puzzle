@@ -16,6 +16,9 @@ class PieceVisual extends StatelessWidget {
 
     /// When true, draw only the blocks (no tray card chrome).
     this.bare = false,
+
+    /// Exact cell size, e.g. the board's while dragging; skips [maxExtent].
+    this.cellSize,
   });
 
   final TrayPiece piece;
@@ -24,6 +27,7 @@ class PieceVisual extends StatelessWidget {
   final bool lifted;
   final bool dimmed;
   final bool bare;
+  final double? cellSize;
 
   @override
   Widget build(BuildContext context) {
@@ -34,9 +38,11 @@ class PieceVisual extends StatelessWidget {
     final maxC = shape.cells.map((c) => c.$2).fold(0, (a, b) => a > b ? a : b);
     final rows = maxR + 1;
     final cols = maxC + 1;
-    final cell = bare
-        ? (maxExtent / (rows > cols ? rows : cols)).clamp(18.0, 36.0)
-        : (maxExtent / (rows > cols ? rows : cols)).clamp(12.0, 28.0);
+    final cell =
+        cellSize ??
+        (bare
+            ? (maxExtent / (rows > cols ? rows : cols)).clamp(18.0, 36.0)
+            : (maxExtent / (rows > cols ? rows : cols)).clamp(12.0, 28.0));
     final color =
         surfaces.blockPalette[piece.colorIndex % surfaces.blockPalette.length];
 
@@ -59,7 +65,9 @@ class PieceVisual extends StatelessWidget {
                   isLight: isLight,
                   radius: bare ? 7 : PetalRadius.block,
                   lifted: lifted || bare,
-                  borderWidth: isLight ? (bare ? 1.4 : 1.15) : (bare ? 1.2 : 0.9),
+                  borderWidth: isLight
+                      ? (bare ? 1.4 : 1.15)
+                      : (bare ? 1.2 : 0.9),
                 ),
               ),
             ),

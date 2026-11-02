@@ -5,7 +5,7 @@
 | Layer | Path | Responsibility |
 | --- | --- | --- |
 | Game rules | `lib/game/` | Board, pieces, scoring, bloom, engine (no widgets) |
-| Campaign | `lib/campaign/` | 50 levels, worlds, progression, merge |
+| Campaign | `lib/campaign/` | 500 levels in 10 worlds, generator, progression, merge |
 | Services | `lib/services/` | Local save, auth, cloud, ads, connectivity, audio, haptics |
 | State | `lib/state/app_state.dart` | Navigation + orchestration |
 | UI | `lib/ui/` | Theme, screens, board/tray widgets |
@@ -25,14 +25,26 @@ Clear cells fill a meter (`bloomChargePerClearCells = 12`). Each full charge (ma
 
 ## Campaign
 
-Static definitions in `CampaignCatalog`. Saves store progress only, not level JSON. Completing level 50 sets `campaignComplete`; level 51 is not generated.
+`CampaignCatalog` holds the worlds and hand-built levels 1–10; `LevelGenerator` deterministically builds 11–500 from the level id. Saves store progress only, and only for levels the player has reached. Completing level 500 sets `campaignComplete`.
+
+**Objectives live in the engine.** `GameEngine` decides every win and loss, and a move that reaches the goal always wins, even if it also leaves the board dead. `SectionStarter` is the only path from a level definition to an engine run, so tests play exactly what players get.
+
+**Fair deals.** A dealt tray always has a piece that fits. Each section has a fixed seed, so a retry deals the same pieces.
+
+**Stars** rate moves against par: at par 3 stars, within 1.5× par 2 stars, otherwise 1. Survival sections have a fixed length, so they don't count, and no level opens on one.
+
+**Changing levels.** `test/campaign/level_solvability_test.dart` has a bot play every section on its in-game seed, using no Bloom, petals or rescues. If it fails after a retune, run `flutter test test/campaign/calibration_report.dart` and paste the printed map into `LevelGenerator.seedOverrides`. The report also shows the difficulty curve per world.
+
+**Migration.** `catalogVersion` marks saves from the old 50-level catalog. They keep cleared levels and petals, drop finale and world-reward flags, and get the next level unlocked. Mid-run campaign boards from older schemas are dropped because their level may have changed.
 
 ## Persistence
 
-- Guest: `SharedPreferences` key `petalgrid_save_v1`  
-- Cloud: Firestore `users/{uid}` when Firebase enabled  
+- Guest: `SharedPreferences` key `petalgrid_save_v1`
+- Cloud: Firestore `users/{uid}`. Writes are batched (20 s after the last change, plus on level clear, backgrounding and sign-out) and cancelled before account deletion  
 - Merge policy default: max progress + claimed flags (no double first-clear rewards)
 
 ## Ads
 
-`AdsService` uses official Google test unit IDs. Rewards granted only after `onUserEarnedReward`. Interstitial/app-open frequency gated in `AppConfig`.
+`AdsService` uses Google's test unit IDs until `adsUseTestIds` is false. Consent (UMP) runs before the SDK starts. Rewards are granted only after `onUserEarnedReward`.
+
+`AdPolicy` holds the when-to-show rules. Full-screen ads are only shown if already loaded, never after waiting, so one can't land on top of a puzzle. Interstitials play after the player taps out of a finished level, starting after 5 clears and at most every 2 minutes. App-open ads need 30 s away from the app, a quiet menu screen, and no other recent ad.

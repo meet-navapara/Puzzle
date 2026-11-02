@@ -141,9 +141,7 @@ class _ScoreFloatState extends State<ScoreFloat>
     super.initState();
     _c = AnimationController(
       vsync: this,
-      duration: widget.reducedMotion
-          ? PetalMotion.tap
-          : PetalMotion.scoreFloat,
+      duration: widget.reducedMotion ? PetalMotion.tap : PetalMotion.scoreFloat,
     )..forward();
   }
 
@@ -328,16 +326,19 @@ class _LineClearPainter extends CustomPainter {
       if (!reduced && sweep > 0 && fade < 1) {
         final x = size.width * sweep;
         final band = Paint()
-          ..shader = LinearGradient(
-            colors: [
-              accent.withValues(alpha: 0),
-              accent.withValues(alpha: 0.85),
-              flash.withValues(alpha: 0.95),
-              accent.withValues(alpha: 0.85),
-              accent.withValues(alpha: 0),
-            ],
-            stops: const [0, 0.35, 0.5, 0.65, 1],
-          ).createShader(Rect.fromLTWH(x - cell * 1.2, r * cell, cell * 2.4, cell));
+          ..shader =
+              LinearGradient(
+                colors: [
+                  accent.withValues(alpha: 0),
+                  accent.withValues(alpha: 0.85),
+                  flash.withValues(alpha: 0.95),
+                  accent.withValues(alpha: 0.85),
+                  accent.withValues(alpha: 0),
+                ],
+                stops: const [0, 0.35, 0.5, 0.65, 1],
+              ).createShader(
+                Rect.fromLTWH(x - cell * 1.2, r * cell, cell * 2.4, cell),
+              );
         canvas.drawRect(
           Rect.fromLTWH(0, r * cell + 1, size.width, cell - 2),
           band,
@@ -357,18 +358,21 @@ class _LineClearPainter extends CustomPainter {
       if (!reduced && sweep > 0 && fade < 1) {
         final y = size.height * sweep;
         final band = Paint()
-          ..shader = LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              accent.withValues(alpha: 0),
-              accent.withValues(alpha: 0.85),
-              flash.withValues(alpha: 0.95),
-              accent.withValues(alpha: 0.85),
-              accent.withValues(alpha: 0),
-            ],
-            stops: const [0, 0.35, 0.5, 0.65, 1],
-          ).createShader(Rect.fromLTWH(c * cell, y - cell * 1.2, cell, cell * 2.4));
+          ..shader =
+              LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  accent.withValues(alpha: 0),
+                  accent.withValues(alpha: 0.85),
+                  flash.withValues(alpha: 0.95),
+                  accent.withValues(alpha: 0.85),
+                  accent.withValues(alpha: 0),
+                ],
+                stops: const [0, 0.35, 0.5, 0.65, 1],
+              ).createShader(
+                Rect.fromLTWH(c * cell, y - cell * 1.2, cell, cell * 2.4),
+              );
         canvas.drawRect(
           Rect.fromLTWH(c * cell + 1, 0, cell - 2, size.height),
           band,
@@ -379,15 +383,13 @@ class _LineClearPainter extends CustomPainter {
   }
 
   void _petals(Canvas canvas, Offset center, Color color, double t) {
-    final paint = Paint()..color = color.withValues(alpha: 0.55 * (1 - t * 0.4));
+    final paint = Paint()
+      ..color = color.withValues(alpha: 0.55 * (1 - t * 0.4));
     for (var i = 0; i < 5; i++) {
       final a = i * (math.pi * 2 / 5) + t * 2;
       final d = 6.0 + t * 18;
       final p = center + Offset(math.cos(a) * d, math.sin(a) * d);
-      canvas.drawOval(
-        Rect.fromCenter(center: p, width: 5, height: 8),
-        paint,
-      );
+      canvas.drawOval(Rect.fromCenter(center: p, width: 5, height: 8), paint);
     }
   }
 

@@ -58,6 +58,10 @@ class GameState {
     this.bloomEnabled = true,
     this.poolIds = const [],
     this.sectionIntro = '',
+    this.lineTarget,
+    this.comboTarget,
+    this.clearBoardGoal = false,
+    this.levelRunMoves = 0,
   });
 
   final Board board;
@@ -94,6 +98,20 @@ class GameState {
   final List<String> poolIds;
   final String sectionIntro;
 
+  /// Lines to clear to complete a clearLines section.
+  final int? lineTarget;
+
+  /// Consecutive clears needed to complete a comboStreak section.
+  final int? comboTarget;
+
+  /// When true, emptying the board completes the section.
+  final bool clearBoardGoal;
+
+  /// Moves spent on earlier sections of this level (star rating).
+  final int levelRunMoves;
+
+  bool get outOfMoves => movesRemaining != null && movesRemaining! <= 0;
+
   List<TrayPiece> get availableTray => tray.where((p) => !p.used).toList();
 
   bool get isPlaying => phase == GamePhase.playing;
@@ -123,6 +141,10 @@ class GameState {
     bool? bloomEnabled,
     List<String>? poolIds,
     String? sectionIntro,
+    int? lineTarget,
+    int? comboTarget,
+    bool? clearBoardGoal,
+    int? levelRunMoves,
     bool clearLastEvent = false,
   }) {
     return GameState(
@@ -151,6 +173,10 @@ class GameState {
       bloomEnabled: bloomEnabled ?? this.bloomEnabled,
       poolIds: poolIds ?? this.poolIds,
       sectionIntro: sectionIntro ?? this.sectionIntro,
+      lineTarget: lineTarget ?? this.lineTarget,
+      comboTarget: comboTarget ?? this.comboTarget,
+      clearBoardGoal: clearBoardGoal ?? this.clearBoardGoal,
+      levelRunMoves: levelRunMoves ?? this.levelRunMoves,
     );
   }
 
@@ -187,6 +213,10 @@ class GameState {
     'bloomEnabled': bloomEnabled,
     'poolIds': poolIds,
     'intro': sectionIntro,
+    'lineTarget': lineTarget,
+    'comboTarget': comboTarget,
+    'clearBoardGoal': clearBoardGoal,
+    'levelRunMoves': levelRunMoves,
   };
 
   factory GameState.fromJson(Map<String, dynamic> json) {
@@ -236,6 +266,10 @@ class GameState {
       bloomEnabled: json['bloomEnabled'] as bool? ?? true,
       poolIds: poolRaw,
       sectionIntro: json['intro'] as String? ?? '',
+      lineTarget: json['lineTarget'] as int?,
+      comboTarget: json['comboTarget'] as int?,
+      clearBoardGoal: json['clearBoardGoal'] as bool? ?? false,
+      levelRunMoves: json['levelRunMoves'] as int? ?? 0,
     );
   }
 }
@@ -259,6 +293,8 @@ class GameEngine {
         seed: 1,
       );
 
+  static const int rescueExtraMoves = 5;
+
   final Uuid _uuid;
   SeededRng _rng;
   GameState _state;
@@ -277,9 +313,10 @@ class GameEngine {
     final s = seed ?? DateTime.now().millisecondsSinceEpoch;
     _rng = SeededRng(s);
     _pool = pool ?? ShapeCatalog.standardPool;
+    final board = Board(size: boardSize);
     _state = GameState(
-      board: Board(size: boardSize),
-      tray: _generateTray(),
+      board: board,
+      tray: _dealTray(board),
       score: 0,
       bestScore: bestScore,
       combo: 0,
@@ -311,6 +348,10 @@ class GameEngine {
     bool surviveOnMovesExhausted = false,
     bool bloomEnabled = true,
     String sectionIntro = '',
+    int? lineTarget,
+    int? comboTarget,
+    bool clearBoardGoal = false,
+    int levelRunMoves = 0,
   }) {
     final s = seed ?? (levelId * 1000 + sectionIndex * 17);
     _rng = SeededRng(s);
@@ -319,7 +360,7 @@ class GameEngine {
         .applyPattern(blocked: blocked, prefilled: prefilled);
     _state = GameState(
       board: board,
-      tray: _generateTray(),
+      tray: _dealTray(board),
       score: 0,
       bestScore: bestScore,
       combo: 0,
@@ -340,6 +381,10 @@ class GameEngine {
       bloomEnabled: bloomEnabled,
       poolIds: pool.map((p) => p.id).toList(),
       sectionIntro: sectionIntro,
+      lineTarget: lineTarget,
+      comboTarget: comboTarget,
+      clearBoardGoal: clearBoardGoal,
+      levelRunMoves: levelRunMoves,
     );
     _started = true;
   }
@@ -359,12 +404,51 @@ class GameEngine {
     _started = true;
   }
 
-  List<TrayPiece> _generateTray() {
+  List<TrayPiece> _rollTray() {
     return List.generate(3, (_) {
       final shape = _rng.pick(_pool);
       final color = _rng.nextInt(6);
       return TrayPiece(uid: _uuid.v4(), shape: shape, colorIndex: color);
     });
+  }
+
+  /// Rolls a tray with at least one piece that fits [board], so a fresh deal is
+  /// never an instant loss. Falls back to a single-cell piece on tight boards.
+  List<TrayPiece> _dealTray(Board board) {
+    var tray = _rollTray();
+    for (var i = 0; i < 12; i++) {
+      if (board.anyPieceFits(tray)) return tray;
+      tray = _rollTray();
+    }
+    return [
+      TrayPiece(
+        uid: _uuid.v4(),
+        shape: ShapeCatalog.mono,
+        colorIndex: tray.first.colorIndex,
+      ),
+      ...tray.skip(1),
+    ];
+  }
+
+  /// True once the section's goal is satisfied by these running totals.
+  bool _objectiveMet({
+    required int score,
+    required int lines,
+    required int maxCombo,
+    required int? movesLeft,
+    required Board board,
+  }) {
+    final st = _state;
+    if (st.mode != GameMode.campaign) return false;
+    if (st.winOnScoreTarget &&
+        st.scoreTarget != null &&
+        score >= st.scoreTarget!) {
+      return true;
+    }
+    if (st.lineTarget != null && lines >= st.lineTarget!) return true;
+    if (st.comboTarget != null && maxCombo >= st.comboTarget!) return true;
+    if (st.clearBoardGoal && board.filledCount == 0) return true;
+    return st.surviveOnMovesExhausted && movesLeft != null && movesLeft <= 0;
   }
 
   bool canPlace(String pieceUid, int row, int col) {
@@ -392,8 +476,7 @@ class GameEngine {
     final afterClear = placed.applyClears(clear);
 
     final nextCombo = clear.hasClears ? _state.combo + 1 : 0;
-    final maxCombo =
-        nextCombo > _state.maxCombo ? nextCombo : _state.maxCombo;
+    final maxCombo = nextCombo > _state.maxCombo ? nextCombo : _state.maxCombo;
     final breakdown = ScoreBreakdown.forPlacement(
       placedCells: piece.shape.cellCount,
       lineCount: clear.lineCount,
@@ -410,7 +493,7 @@ class GameEngine {
         .toList();
 
     if (tray.every((p) => p.used)) {
-      tray = _generateTray();
+      tray = _dealTray(afterClear);
     }
 
     var movesLeft = _state.movesRemaining;
@@ -421,36 +504,21 @@ class GameEngine {
     final newScore = _state.score + breakdown.totalDelta;
     final best = newScore > _state.bestScore ? newScore : _state.bestScore;
 
+    final lines = _state.linesClearedTotal + clear.lineCount;
     var phase = GamePhase.playing;
 
-    // Score-target win only for reachScore sections.
-    if (_state.mode == GameMode.campaign &&
-        _state.winOnScoreTarget &&
-        _state.scoreTarget != null &&
-        newScore >= _state.scoreTarget!) {
+    // The goal wins first: a move that reaches it can't also lose the section.
+    if (_objectiveMet(
+      score: newScore,
+      lines: lines,
+      maxCombo: maxCombo,
+      movesLeft: movesLeft,
+      board: afterClear,
+    )) {
       phase = GamePhase.levelComplete;
-    }
-
-    // Survive objective: exhausting moves wins (checked before dead-board).
-    if (phase == GamePhase.playing &&
-        _state.surviveOnMovesExhausted &&
-        movesLeft != null &&
-        movesLeft <= 0) {
-      phase = GamePhase.levelComplete;
-    }
-
-    // Failed timed reachScore: out of moves without hitting target.
-    if (phase == GamePhase.playing &&
-        movesLeft != null &&
-        movesLeft <= 0 &&
-        _state.winOnScoreTarget &&
-        _state.scoreTarget != null &&
-        newScore < _state.scoreTarget!) {
+    } else if (movesLeft != null && movesLeft <= 0) {
       phase = GamePhase.gameOver;
-    }
-
-    // Dead board → game over, unless we already completed (e.g. survived).
-    if (phase == GamePhase.playing && !afterClear.anyPieceFits(tray)) {
+    } else if (!afterClear.anyPieceFits(tray)) {
       phase = GamePhase.gameOver;
     }
 
@@ -461,7 +529,7 @@ class GameEngine {
       bestScore: best,
       combo: nextCombo,
       maxCombo: maxCombo,
-      linesClearedTotal: _state.linesClearedTotal + clear.lineCount,
+      linesClearedTotal: lines,
       bloom: bloom,
       phase: phase,
       moveCount: _state.moveCount + 1,
@@ -498,10 +566,13 @@ class GameEngine {
     final newScore = _state.score + bonus.totalDelta;
     var phase = GamePhase.playing;
 
-    if (_state.mode == GameMode.campaign &&
-        _state.winOnScoreTarget &&
-        _state.scoreTarget != null &&
-        newScore >= _state.scoreTarget!) {
+    if (_objectiveMet(
+      score: newScore,
+      lines: _state.linesClearedTotal + clear.lineCount,
+      maxCombo: _state.maxCombo,
+      movesLeft: _state.movesRemaining,
+      board: after,
+    )) {
       phase = GamePhase.levelComplete;
     } else if (!after.anyPieceFits(_state.tray)) {
       phase = GamePhase.gameOver;
@@ -559,22 +630,29 @@ class GameEngine {
     return _state;
   }
 
-  /// Rewarded-ad rescue: refill tray once per run if confirmed by ad service.
+  /// True when a game-over board could be saved by spending a Bloom charge.
+  bool get canReviveWithBloom {
+    final st = _state;
+    return st.phase == GamePhase.gameOver &&
+        st.bloomEnabled &&
+        st.bloom.canPrune &&
+        !st.outOfMoves;
+  }
+
+  /// Reopens a stuck board so the player can Bloom Prune a cell.
+  GameState? reviveForPrune() {
+    if (!canReviveWithBloom) return null;
+    _state = _state.copyWith(phase: GamePhase.playing);
+    return _state;
+  }
+
+  /// Rewarded-ad rescue: fresh tray once per run, confirmed by the ad service.
+  /// A section lost by running out of moves also gets [rescueExtraMoves] more,
+  /// otherwise the reward would end the run on the very next placement.
   GameState? applyRescueTray() {
     if (_state.phase != GamePhase.gameOver) return null;
     if (_state.rescueUsed) return null;
-    final tray = _generateTray();
-    List<TrayPiece> rescueTray = tray;
-    for (var i = 0; i < 8; i++) {
-      if (_state.board.anyPieceFits(rescueTray)) break;
-      rescueTray = _generateTray();
-    }
-    if (!_state.board.anyPieceFits(rescueTray)) {
-      rescueTray = [
-        TrayPiece(uid: _uuid.v4(), shape: ShapeCatalog.mono, colorIndex: 0),
-        ...rescueTray.take(2),
-      ];
-    }
+    final rescueTray = _dealTray(_state.board);
     if (!_state.board.anyPieceFits(rescueTray)) return null;
 
     _state = _state.copyWith(
@@ -582,6 +660,7 @@ class GameEngine {
       phase: GamePhase.playing,
       rescueUsed: true,
       combo: 0,
+      movesRemaining: _state.outOfMoves ? rescueExtraMoves : null,
     );
     return _state;
   }

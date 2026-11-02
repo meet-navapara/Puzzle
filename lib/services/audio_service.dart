@@ -49,9 +49,7 @@ class AudioService extends ChangeNotifier {
             usageType: AndroidUsageType.game,
             audioFocus: AndroidAudioFocus.gainTransientMayDuck,
           ),
-          iOS: AudioContextIOS(
-            category: AVAudioSessionCategory.playback,
-          ),
+          iOS: AudioContextIOS(category: AVAudioSessionCategory.playback),
         ),
       );
     } catch (e) {

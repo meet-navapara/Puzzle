@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../campaign/campaign_catalog.dart';
 import '../../core/app_config.dart';
 import '../../core/firebase_bootstrap.dart';
 import '../../services/auth_service.dart';
 import '../../state/app_state.dart';
 import '../theme/petal_theme.dart';
+import '../widgets/google_mark.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -96,7 +98,7 @@ class SettingsScreen extends StatelessWidget {
                 _InfoRow(
                   label: 'Campaign',
                   value:
-                      '${app.save!.campaign.completedCount}/50 · ${app.save!.campaign.petals} petals',
+                      '${app.save!.campaign.completedCount}/${CampaignCatalog.totalLevels} · ${app.save!.campaign.petals} petals',
                 ),
                 Divider(height: 1, color: surfaces.panelBorder),
                 _InfoRow(
@@ -112,23 +114,14 @@ class SettingsScreen extends StatelessWidget {
                     ? null
                     : () => app.signInGoogle(),
                 icon: Container(
-                  width: 20,
-                  height: 20,
+                  width: 24,
+                  height: 24,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Text(
-                    'G',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF4285F4),
-                      height: 1,
-                      decoration: TextDecoration.none,
-                    ),
-                  ),
+                  child: const GoogleMark(size: 18),
                 ),
                 label: const Text('Link Google & sync'),
               ),
@@ -153,10 +146,8 @@ class SettingsScreen extends StatelessWidget {
                 onPressed: () => _confirmDelete(context, app),
                 child: Text(
                   'Delete account & cloud data',
-                  style: PetalText.button(context).copyWith(
-                    color: surfaces.danger,
-                    fontSize: 14,
-                  ),
+                  style: PetalText.button(context)
+                      .copyWith(color: surfaces.danger, fontSize: 14),
                 ),
               ),
             ],
@@ -165,10 +156,8 @@ class SettingsScreen extends StatelessWidget {
                 onPressed: () => _confirmClearLocal(context, app),
                 child: Text(
                   'Clear local data on this device',
-                  style: PetalText.button(context).copyWith(
-                    color: surfaces.danger,
-                    fontSize: 14,
-                  ),
+                  style: PetalText.button(context)
+                      .copyWith(color: surfaces.danger, fontSize: 14),
                 ),
               ),
             const SizedBox(height: PetalSpace.lg),
@@ -255,9 +244,7 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 _SwitchRow(
                   title: 'Music',
-                  subtitle: app.audio.hasMusicAsset
-                      ? 'Loops while you garden'
-                      : 'Add music_loop.wav (or .ogg) under assets/audio',
+                  subtitle: 'Loops while you garden',
                   value: s.musicEnabled,
                   onChanged: (v) =>
                       app.updateSettings(s.copyWith(musicEnabled: v)),
@@ -304,6 +291,33 @@ class SettingsScreen extends StatelessWidget {
             const SizedBox(height: PetalSpace.md),
             _SettingsCard(
               children: [
+                if (app.ads.privacyOptionsRequired)
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: app.ads.showPrivacyOptions,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Ad privacy choices',
+                                style: PetalText.body(context),
+                              ),
+                            ),
+                            Icon(
+                              Icons.chevron_right_rounded,
+                              color: surfaces.muted,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 Material(
                   color: Colors.transparent,
                   child: InkWell(
@@ -444,6 +458,7 @@ class _InfoRow extends StatelessWidget {
         children: [
           Expanded(child: Text(label, style: PetalText.body(context))),
           Flexible(
+            fit: FlexFit.tight,
             child: Text(
               value,
               style: PetalText.supporting(context),

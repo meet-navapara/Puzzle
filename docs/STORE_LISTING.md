@@ -1,58 +1,64 @@
-# PetalGrid — Store listing draft
+# PetalGrid store listing
 
-> Owner must replace placeholders. Do not invent a support email, company name, or trademark status.
+Copy-ready for Play Console → Grow users → Store presence → Main store listing.
 
-## App name options
+## App name (max 30)
 
-1. PetalGrid  
-2. PetalGrid Gardens  
-3. PetalGrid: Bloom Puzzles  
+PetalGrid: Block Garden Puzzle
 
-## Short description (≤80 chars)
+## Short description (max 80)
 
-Plant blocks, bloom rows, and grow through 50 garden trials.
+Plant blocks, bloom rows and columns, and grow through 500 garden levels.
 
-## Full description
+## Full description (max 4000)
 
-PetalGrid is an original block-placement puzzle garden.
+Grow a garden, one block at a time.
 
-Drag colorful pieces onto the board. Fill a full row or column to bloom it away. Chain clears for combos, then spend Bloom Charge to prune a single stuck cell when you need a careful rescue.
+PetalGrid is a relaxing block puzzle with room to think. Drag colorful pieces onto the board, fill a row or column, and watch it bloom away. Chain clears together for combos, and when you get stuck, spend a Bloom Charge to prune a single cell and rescue your garden.
 
-**Classic Garden** — endless high-score play.  
-**Campaign** — five worlds and exactly fifty handcrafted levels, from Verdant Grove to the Celestial Conservatory.  
-**Daily Dew** — optional rewarded bonus (ad reward required).
+CAMPAIGN: 500 LEVELS, 10 WORLDS
+Travel from the gentle Verdant Grove to the Celestial Conservatory. Each world brings new board shapes, stone obstacles, overgrown beds and heavier pieces. Reach a score, clear lines, build combos or survive to the last move. Every level can be retried with the same pieces, so you can learn it and beat it.
 
-Play as a guest with local saves, or sign in with Google to sync progress to the cloud.
+EARN THREE STARS
+Clear a level to move on, then come back and finish in fewer moves for a full three stars.
 
-## Feature bullets
+CLASSIC GARDEN
+No goals, no move limits. Just you, the board and your best score.
 
-- Original 8×8 / 9×9 garden boards  
-- Tap + drag placement with ghost preview  
-- Row & column blooms, multi-clears, combos  
-- Bloom Charge signature mechanic  
-- 50-level campaign across 5 worlds  
-- Guest mode + Google cloud saves  
-- Sound, haptics, and reduced-effects options  
+DAILY DEW
+Watch an optional ad once a day for bonus petals. Spend petals on extra Bloom Charges when a level gets tough.
 
-## Screenshot plan
+PLAY YOUR WAY
+- Play as a guest straight away, no account needed
+- Sign in with Google to keep your progress across devices
+- Drag and drop, or tap a piece then tap the board
+- Dark and light themes
+- Sound, music, haptics and reduced-motion settings
 
-1. Classic board mid-combo  
-2. Bloom Charge prune highlight  
-3. World map (Verdant Grove)  
-4. Level select grid  
-5. Campaign victory / Eternal Bloom  
-6. Pause / settings accessibility  
+PetalGrid is free to play and contains ads. An internet connection is required to play.
 
-## Promo graphic concepts
+Support: navaparameetdev@gmail.com
 
-Soft mist-green gradient, five petal logo mark, wordmark “PetalGrid”, tagline “Grow your garden one block at a time.” No imitation of other puzzle brands.
+## Category and tags
 
-## Support / legal
+- App or game: **Game**
+- Category: **Puzzle**
+- Tags: Block puzzle, Casual, Single player (not "Offline": the game needs a connection)
 
-- Support email: navaparameetdev@gmail.com  
-- Support URL: https://petalgrid-e7287.web.app/support.html  
-- Privacy Policy URL: https://petalgrid-e7287.web.app/privacy.html  
-- Terms URL: https://petalgrid-e7287.web.app/terms.html  
-- Account deletion URL: https://petalgrid-e7287.web.app/delete-account.html  
-- Legal entity: OWNER_SUPPLY (add company / individual name for Play)  
+## Contact details
 
+- Email: navaparameetdev@gmail.com
+- Website: https://petalgrid-e7287.web.app/
+- Privacy policy: https://petalgrid-e7287.web.app/privacy.html
+
+## Graphics (`docs/store_assets/`)
+
+| Asset | File | Play requirement |
+| --- | --- | --- |
+| App icon | `icon_512.png` | 512 × 512 PNG, up to 1024 KB |
+| Feature graphic | `feature_graphic_1024x500.png` | 1024 × 500, no transparency |
+| Phone screenshots | `screenshot_*.png` | 1080 × 1920; at least 2, up to 8 |
+
+Screenshots were captured from the real app on a Pixel 8a. Listing rules to keep in
+mind if you replace them: no "#1" or "best" claims, no prices or award badges, and
+no device frames that imply features the app lacks.

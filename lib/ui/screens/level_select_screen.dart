@@ -2,11 +2,46 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../campaign/campaign_catalog.dart';
+import '../../campaign/level_generator.dart';
+import '../../campaign/level_models.dart';
 import '../../state/app_state.dart';
 import '../theme/petal_theme.dart';
 
-class LevelSelectScreen extends StatelessWidget {
+/// Fifty levels per world, so this is a compact grid that opens at the player's
+/// current level rather than a long list they would have to scroll every visit.
+class LevelSelectScreen extends StatefulWidget {
   const LevelSelectScreen({super.key});
+
+  @override
+  State<LevelSelectScreen> createState() => _LevelSelectScreenState();
+}
+
+class _LevelSelectScreenState extends State<LevelSelectScreen> {
+  static const int _columns = 5;
+  static const double _gap = 10;
+
+  final ScrollController _scroll = ScrollController();
+  bool _didScroll = false;
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _scrollToCurrent(WorldDefinition world, int currentId, double tileSize) {
+    if (_didScroll) return;
+    _didScroll = true;
+    final index = world.levelIds.indexOf(currentId);
+    if (index < 0) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scroll.hasClients) return;
+      final row = index ~/ _columns;
+      final position = _scroll.position;
+      final target = row * (tileSize + _gap) - position.viewportDimension / 3;
+      _scroll.jumpTo(target.clamp(0.0, position.maxScrollExtent));
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,15 +49,21 @@ class LevelSelectScreen extends StatelessWidget {
     final world = CampaignCatalog.worlds[app.selectedWorld];
     final accent = Color(world.accentColorValue);
     final surfaces = PetalSurfaces.of(context);
+    final campaign = app.save!.campaign;
     final done = world.levelIds
-        .where((id) => app.save!.campaign.progressOf(id).completed)
+        .where((id) => campaign.progressOf(id).completed)
         .length;
+    final stars = world.levelIds.fold<int>(
+      0,
+      (sum, id) => sum + campaign.progressOf(id).stars,
+    );
+    final currentId = campaign.nextLevelId;
 
     return GardenBackdrop(
       accent: accent,
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -56,88 +97,58 @@ class LevelSelectScreen extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          'World ${world.index + 1} of 5 · $done / ${world.levelIds.length} cleared',
+                          'World ${world.index + 1} of ${CampaignCatalog.worlds.length} · '
+                          '$done / ${world.levelIds.length} cleared · $stars stars',
                           style: PetalText.caption(context),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
-              Container(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(PetalRadius.xl),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [accent.withValues(alpha: 0.24), surfaces.panel],
-                  ),
-                  border: Border.all(color: accent.withValues(alpha: 0.42)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: accent.withValues(alpha: 0.1),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: accent.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(Icons.map_rounded, color: accent, size: 24),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        world.subtitle,
-                        style: PetalText.section(context)
-                            .copyWith(fontSize: 15),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text('Levels', style: PetalText.section(context)),
               const SizedBox(height: 10),
+              Text(
+                world.subtitle,
+                style: PetalText.supporting(context),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 12),
               Expanded(
-                child: ListView.separated(
-                  itemCount: world.levelIds.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 10),
-                  itemBuilder: (context, i) {
-                    final id = world.levelIds[i];
-                    final p = app.save!.campaign.progressOf(id);
-                    final level = CampaignCatalog.level(id);
-                    final isNext =
-                        p.unlocked &&
-                        !p.completed &&
-                        world.levelIds
-                            .take(i)
-                            .every(
-                              (prev) =>
-                                  app.save!.campaign.progressOf(prev).completed,
-                            );
-
-                    return _LevelCard(
-                      id: id,
-                      name: level.name,
-                      unlocked: p.unlocked,
-                      completed: p.completed,
-                      stars: p.stars,
-                      accent: accent,
-                      emphasized:
-                          isNext || (p.unlocked && !p.completed && i == 0),
-                      onTap: p.unlocked ? () => app.startLevel(id) : null,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final columns = constraints.maxWidth > 600
+                        ? _columns * 2
+                        : _columns;
+                    final tile =
+                        (constraints.maxWidth - _gap * (columns - 1)) / columns;
+                    _scrollToCurrent(world, currentId, tile);
+                    return GridView.builder(
+                      controller: _scroll,
+                      padding: const EdgeInsets.only(bottom: 20),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: columns,
+                        mainAxisSpacing: _gap,
+                        crossAxisSpacing: _gap,
+                      ),
+                      itemCount: world.levelIds.length,
+                      itemBuilder: (context, i) {
+                        final id = world.levelIds[i];
+                        final p = campaign.progressOf(id);
+                        return _LevelTile(
+                          id: id,
+                          name: CampaignCatalog.level(id).name,
+                          unlocked: p.unlocked,
+                          completed: p.completed,
+                          stars: p.stars,
+                          accent: accent,
+                          current: id == currentId && !p.completed,
+                          milestone: LevelGenerator.isMilestone(id),
+                          onTap: p.unlocked ? () => app.startLevel(id) : null,
+                        );
+                      },
                     );
                   },
                 ),
@@ -150,15 +161,16 @@ class LevelSelectScreen extends StatelessWidget {
   }
 }
 
-class _LevelCard extends StatelessWidget {
-  const _LevelCard({
+class _LevelTile extends StatelessWidget {
+  const _LevelTile({
     required this.id,
     required this.name,
     required this.unlocked,
     required this.completed,
     required this.stars,
     required this.accent,
-    required this.emphasized,
+    required this.current,
+    required this.milestone,
     required this.onTap,
   });
 
@@ -168,161 +180,101 @@ class _LevelCard extends StatelessWidget {
   final bool completed;
   final int stars;
   final Color accent;
-  final bool emphasized;
+  final bool current;
+  final bool milestone;
   final VoidCallback? onTap;
+
+  String get _semanticLabel {
+    final status = !unlocked
+        ? 'locked'
+        : completed
+        ? '$stars of 3 stars'
+        : current
+        ? 'play now'
+        : 'ready';
+    return 'Level $id, $name, $status';
+  }
 
   @override
   Widget build(BuildContext context) {
     final surfaces = PetalSurfaces.of(context);
     final locked = !unlocked;
-
-    String statusLabel;
-    if (locked) {
-      statusLabel = 'Locked';
-    } else if (completed) {
-      statusLabel = stars > 0
-          ? '$stars star${stars == 1 ? '' : 's'}'
-          : 'Cleared';
-    } else if (emphasized) {
-      statusLabel = 'Play now';
-    } else {
-      statusLabel = 'Ready';
-    }
+    final radius = BorderRadius.circular(PetalRadius.lg);
 
     return Opacity(
-      opacity: locked ? 0.58 : 1,
+      opacity: locked ? 0.5 : 1,
       child: Semantics(
         button: true,
         enabled: unlocked,
-        label: 'Level $id $name',
+        label: _semanticLabel,
+        excludeSemantics: true,
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            borderRadius: BorderRadius.circular(PetalRadius.xl),
+            borderRadius: radius,
             onTap: onTap,
             child: Ink(
-              height: emphasized ? 88 : 80,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(PetalRadius.xl),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    accent.withValues(
-                      alpha: emphasized
-                          ? 0.26
-                          : completed
-                          ? 0.18
-                          : 0.12,
-                    ),
-                    surfaces.panel,
-                    surfaces.panel,
-                  ],
-                ),
+                borderRadius: radius,
+                color: current
+                    ? accent.withValues(alpha: 0.34)
+                    : completed
+                    ? accent.withValues(alpha: 0.16)
+                    : surfaces.panel,
                 border: Border.all(
-                  color: accent.withValues(
-                    alpha: emphasized
-                        ? 0.5
-                        : unlocked
-                        ? 0.32
-                        : 0.18,
-                  ),
-                  width: emphasized ? 1.3 : 1.1,
+                  color: current
+                      ? accent
+                      : milestone && unlocked
+                      ? accent.withValues(alpha: 0.75)
+                      : surfaces.panelBorder,
+                  width: current || milestone ? 2 : 1,
                 ),
-                boxShadow: unlocked
-                    ? [
-                        BoxShadow(
-                          color: accent.withValues(
-                            alpha: Theme.of(context).brightness ==
-                                    Brightness.light
-                                ? (emphasized ? 0.1 : 0.05)
-                                : (emphasized ? 0.14 : 0.06),
-                          ),
-                          blurRadius: emphasized ? 14 : 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
-                    : null,
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: Row(
+                padding: const EdgeInsets.all(2),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: accent.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        '$id',
-                        style: PetalText.section(context)
-                            .copyWith(color: accent, fontSize: 18),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            name,
-                            style: PetalText.section(context)
-                                .copyWith(fontSize: 16),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            statusLabel,
-                            style: PetalText.supporting(context).copyWith(
-                              color: locked
-                                  ? surfaces.muted
-                                  : emphasized
-                                  ? accent
-                                  : surfaces.muted,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          if (unlocked && stars > 0) ...[
-                            const SizedBox(height: 4),
-                            Row(
-                              children: List.generate(
-                                3,
-                                (s) => Padding(
-                                  padding: const EdgeInsets.only(right: 2),
-                                  child: Icon(
-                                    Icons.star_rounded,
-                                    size: 14,
-                                    color: s < stars
-                                        ? surfaces.accentSoft
-                                        : surfaces.muted.withValues(
-                                            alpha: 0.28,
-                                          ),
-                                  ),
-                                ),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: locked
+                          ? Icon(
+                              Icons.lock_rounded,
+                              size: 18,
+                              color: surfaces.muted,
+                            )
+                          : Text(
+                              '$id',
+                              style: PetalText.section(context).copyWith(
+                                fontSize: 16,
+                                color: current || completed
+                                    ? surfaces.onPanel
+                                    : accent,
                               ),
                             ),
+                    ),
+                    if (completed) ...[
+                      const SizedBox(height: 2),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            for (var s = 0; s < 3; s++)
+                              Icon(
+                                Icons.star_rounded,
+                                size: 12,
+                                color: s < stars
+                                    ? surfaces.accentSoft
+                                    : surfaces.muted.withValues(alpha: 0.3),
+                              ),
                           ],
-                        ],
+                        ),
                       ),
-                    ),
-                    Icon(
-                      locked
-                          ? Icons.lock_rounded
-                          : completed
-                          ? Icons.check_circle_rounded
-                          : Icons.play_arrow_rounded,
-                      color: locked
-                          ? surfaces.muted
-                          : completed
-                          ? accent
-                          : accent,
-                      size: 26,
-                    ),
+                    ] else if (milestone && !locked) ...[
+                      const SizedBox(height: 2),
+                      Icon(Icons.flag_rounded, size: 12, color: accent),
+                    ],
                   ],
                 ),
               ),

@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 
 import '../campaign/campaign_catalog.dart';
 import '../campaign/level_models.dart';
+import '../campaign/section_starter.dart';
 import '../core/app_config.dart';
 import '../game/game_engine.dart';
 import '../services/ads_service.dart';
@@ -88,12 +89,31 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   int sectionMaxCombo = 0;
   int levelRunScore = 0;
 
+  /// Rated moves across finished sections of this level (for stars).
+  int levelRunMoves = 0;
+
+  /// Stars earned by the run that just finished; null until a level ends.
+  int? lastRunStars;
+
+  /// A rewarded rescue is loading or on screen.
+  bool rescueInProgress = false;
+
   Future<void>? _persistChain;
   VoidCallback? _authListener;
+  Timer? _cloudPushTimer;
+  DateTime? _backgroundedAt;
+
+  /// Coalesces cloud writes; a move-by-move push would spend Firestore quota.
+  static const Duration _cloudPushDelay = Duration(seconds: 20);
 
   bool get hasResumableGame {
     final g = save?.activeGame;
     if (g == null) return false;
+    if (g.phase == GamePhase.levelComplete) {
+      // Between sections of a level there is still something to come back to.
+      final level = CampaignCatalog.byId[g.levelId];
+      return level != null && g.sectionIndex + 1 < level.sections.length;
+    }
     return g.phase == GamePhase.playing ||
         g.phase == GamePhase.paused ||
         g.phase == GamePhase.connectionPaused;
@@ -124,15 +144,18 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     unawaited(audio.warmUp());
     ready = true;
 
-    if (AppConfig.requireInternetForPlay && !connectivity.isOnline) {
-      _screenBeforeConnection = AppScreen.welcome;
-      screen = AppScreen.connectionRequired;
-    } else if (_shouldSkipWelcome()) {
-      screen = AppScreen.mainMenu;
-    } else {
+    // Login is always the first screen for a new player, even when offline:
+    // its buttons explain the connection requirement if it applies.
+    if (!_shouldSkipWelcome()) {
       screen = AppScreen.welcome;
+    } else if (AppConfig.requireInternetForPlay && !connectivity.isOnline) {
+      _screenBeforeConnection = AppScreen.mainMenu;
+      screen = AppScreen.connectionRequired;
+    } else {
+      screen = AppScreen.mainMenu;
     }
     notifyListeners();
+    unawaited(_syncFromCloud());
 
     // Init ads after first UI frame so WebView/JavascriptEngine can attach.
     if (AppConfig.adsEnabled) {
@@ -143,13 +166,24 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   bool _shouldSkipWelcome() {
-    final s = save;
-    if (s == null) return false;
-    if (s.settings.welcomeSeen) return true;
-    if (s.settings.tutorialSeen) return true;
-    if (s.classicBest > 0) return true;
-    if (s.campaign.completedCount > 0) return true;
-    return false;
+    if (auth.isAuthenticated) return true;
+    return save?.settings.welcomeSeen ?? false;
+  }
+
+  /// A signed-in player may have progressed on another device since last time.
+  Future<void> _syncFromCloud() async {
+    final uid = auth.uid;
+    if (uid == null || save == null || !connectivity.isOnline) return;
+    final remote = await cloud.fetch(uid);
+    if (remote == null || save == null || auth.uid != uid) return;
+    save = cloud.resolveConflict(
+      local: save!,
+      cloud: remote,
+      policy: CloudMergePolicy.mergeProgress,
+    );
+    _refreshDailyClaimFlag();
+    await persist();
+    notifyListeners();
   }
 
   void _refreshDailyClaimFlag() {
@@ -222,20 +256,34 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
         updatedAt: DateTime.now().toUtc(),
       );
       await localSave.save(save!);
-      final uid = auth.uid;
-      if (uid != null && connectivity.isOnline) {
-        unawaited(cloud.push(uid, save!));
-      }
+      _scheduleCloudPush();
     }
 
     _persistChain = (_persistChain ?? Future.value()).then((_) => job());
     return _persistChain!;
   }
 
+  void _scheduleCloudPush() {
+    if (auth.uid == null) return;
+    _cloudPushTimer?.cancel();
+    _cloudPushTimer = Timer(_cloudPushDelay, _pushToCloudNow);
+  }
+
+  void _pushToCloudNow() {
+    _cloudPushTimer?.cancel();
+    _cloudPushTimer = null;
+    final uid = auth.uid;
+    if (uid != null && save != null && connectivity.isOnline) {
+      unawaited(cloud.push(uid, save!));
+    }
+  }
+
   void go(AppScreen next) {
     if (next == screen) return;
     previousScreen = screen;
     screen = next;
+    // A message belongs to the screen that raised it.
+    statusMessage = null;
     notifyListeners();
   }
 
@@ -264,11 +312,13 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
         }
         return false;
       case AppScreen.privacy:
-        go(previousScreen == AppScreen.welcome
-            ? AppScreen.welcome
-            : (previousScreen == AppScreen.settings
-                ? AppScreen.settings
-                : AppScreen.mainMenu));
+        go(
+          previousScreen == AppScreen.welcome
+              ? AppScreen.welcome
+              : (previousScreen == AppScreen.settings
+                    ? AppScreen.settings
+                    : AppScreen.mainMenu),
+        );
         return false;
       case AppScreen.settings:
       case AppScreen.profile:
@@ -292,6 +342,7 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
       notifyListeners();
       return;
     }
+    auth.clearError();
     if (save != null && !save!.settings.welcomeSeen) {
       save = save!.copyWith(
         settings: save!.settings.copyWith(welcomeSeen: true),
@@ -300,7 +351,6 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     }
     screen = AppScreen.mainMenu;
     notifyListeners();
-    unawaited(ads.showAppOpenIfAllowed(puzzleActive: false));
   }
 
   Future<void> signInGoogle() async {
@@ -329,11 +379,13 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
       );
     }
     await persist();
+    _pushToCloudNow();
     screen = AppScreen.mainMenu;
     notifyListeners();
   }
 
   Future<void> signOutLocal() async {
+    _pushToCloudNow();
     await auth.signOut();
     if (save != null) {
       save = save!.copyWith(clearLinkedUid: true);
@@ -352,6 +404,7 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     showingSectionIntro = false;
     advancingSection = false;
     levelRunScore = 0;
+    levelRunMoves = 0;
     sectionLinesCleared = 0;
     sectionMaxCombo = 0;
     statusMessage = null;
@@ -366,14 +419,17 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     final g = save?.activeGame;
     if (g == null) return false;
     if (!_gateOnline()) return false;
-    engine.restore(g.copyWith(
-      phase: g.phase == GamePhase.connectionPaused
-          ? GamePhase.paused
-          : (g.phase == GamePhase.playing ? GamePhase.paused : g.phase),
-    ));
+    engine.restore(
+      g.copyWith(
+        phase: g.phase == GamePhase.connectionPaused
+            ? GamePhase.paused
+            : (g.phase == GamePhase.playing ? GamePhase.paused : g.phase),
+      ),
+    );
     sectionLinesCleared = g.linesClearedTotal;
     sectionMaxCombo = g.maxCombo;
     levelRunScore = g.levelRunScore;
+    levelRunMoves = g.levelRunMoves;
     selectedLevelId = g.levelId;
     campaignSectionIndex = g.sectionIndex;
     puzzleActive = true;
@@ -390,6 +446,13 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     if (!_gateOnline()) return;
     screen = AppScreen.worldMap;
     notifyListeners();
+  }
+
+  /// Jumps straight into the next uncleared level.
+  void playNextLevel() {
+    final s = save;
+    if (s == null) return;
+    startLevel(s.campaign.nextLevelId);
   }
 
   void selectWorld(int index) {
@@ -514,31 +577,25 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     final level = CampaignCatalog.level(levelId);
     if (sectionIndex < 0 || sectionIndex >= level.sections.length) return;
     selectedLevelId = levelId;
+    selectedWorld = level.worldIndex;
     campaignSectionIndex = sectionIndex;
-    levelRunScore = sectionIndex == 0 ? 0 : levelRunScore;
-    if (sectionIndex == 0) levelRunScore = 0;
+    if (sectionIndex == 0) {
+      levelRunScore = 0;
+      levelRunMoves = 0;
+    }
+    lastRunStars = null;
     tutorialSession++;
     _bootSection(level, sectionIndex);
   }
 
   void _bootSection(LevelDefinition level, int sectionIndex) {
     final section = level.sections[sectionIndex];
-    final best = save!.campaign.progressOf(level.id).bestScore;
-    engine.startCampaign(
-      levelId: level.id,
-      sectionIndex: sectionIndex,
-      boardSize: section.boardSize,
-      scoreTarget: section.scoreTarget,
-      moveLimit: section.moveLimit,
-      blocked: section.blockedCells,
-      prefilled: section.prefilledCells,
-      pool: section.shapePool,
-      bestScore: best,
+    engine.startSection(
+      level,
+      sectionIndex,
+      bestScore: save!.campaign.progressOf(level.id).bestScore,
       levelRunScore: levelRunScore,
-      winOnScoreTarget: section.objective == LevelObjective.reachScore,
-      surviveOnMovesExhausted: section.objective == LevelObjective.surviveMoves,
-      bloomEnabled: section.bloomEnabled,
-      sectionIntro: section.introText,
+      levelRunMoves: levelRunMoves,
     );
     sectionLinesCleared = 0;
     sectionMaxCombo = 0;
@@ -574,7 +631,6 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     } else if (result.maxCombo > sectionMaxCombo) {
       sectionMaxCombo = result.maxCombo;
     }
-    _checkCampaignObjectives();
     if (result.mode == GameMode.classic &&
         result.score > (save?.classicBest ?? 0)) {
       save = save!.copyWith(classicBest: result.score, activeGame: result);
@@ -592,49 +648,19 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     return true;
   }
 
-  void _checkCampaignObjectives() {
-    final st = engine.state;
-    if (st.mode != GameMode.campaign || st.levelId == null) return;
-    if (st.phase != GamePhase.playing) return;
-    final level = CampaignCatalog.level(st.levelId!);
-    final section = level.sections[st.sectionIndex];
-    var done = false;
-    switch (section.objective) {
-      case LevelObjective.reachScore:
-        done = section.scoreTarget != null && st.score >= section.scoreTarget!;
-      case LevelObjective.clearLines:
-        done =
-            section.lineTarget != null &&
-            sectionLinesCleared >= section.lineTarget!;
-      case LevelObjective.surviveMoves:
-        done = st.movesRemaining != null && st.movesRemaining! <= 0;
-      case LevelObjective.clearBoard:
-        done = st.board.filledCount == 0 && st.moveCount > 0;
-      case LevelObjective.comboStreak:
-        done =
-            section.comboTarget != null &&
-            sectionMaxCombo >= section.comboTarget!;
-    }
-    if (done) {
-      engine.markLevelComplete();
-      return;
-    }
-
-    // Timed non-survive sections: out of moves without completing → fail.
-    if (st.movesRemaining != null &&
-        st.movesRemaining! <= 0 &&
-        section.objective != LevelObjective.surviveMoves) {
-      engine.markGameOver();
-    }
-  }
-
   void _onSectionComplete() {
     final st = engine.state;
     if (st.levelId == null) return;
     final level = CampaignCatalog.level(st.levelId!);
     levelRunScore += st.score;
+    if (level.sections[st.sectionIndex].objective !=
+        LevelObjective.surviveMoves) {
+      levelRunMoves += st.moveCount;
+    }
     // Keep cumulative on engine state for save/resume.
-    engine.restore(st.copyWith(levelRunScore: levelRunScore));
+    engine.restore(
+      st.copyWith(levelRunScore: levelRunScore, levelRunMoves: levelRunMoves),
+    );
 
     final nextSection = st.sectionIndex + 1;
     if (nextSection < level.sections.length) {
@@ -647,52 +673,82 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
       levelId: st.levelId!,
       score: levelRunScore,
       sectionsDone: level.sections.length,
+      moves: levelRunMoves,
     );
+    lastRunStars = level.starsForMoves(levelRunMoves);
     statusMessage = reward > 0 ? '+$reward petals' : 'Level complete';
     unawaited(persist(clearActive: true));
+    _pushToCloudNow();
     notifyListeners();
   }
 
+  /// The level offered after [levelId], or null after the finale.
+  int? levelAfter(int levelId) =>
+      levelId < CampaignCatalog.totalLevels ? levelId + 1 : null;
+
   void continueNextSection() {
-    if (advancingSection) return;
-    advancingSection = true;
     final st = engine.state;
-    if (st.levelId == null) {
-      advancingSection = false;
-      return;
-    }
+    if (advancingSection || st.levelId == null) return;
     final level = CampaignCatalog.level(st.levelId!);
     final next = st.sectionIndex + 1;
-    if (next >= level.sections.length) {
-      puzzleActive = false;
-      // Every campaign level clear (including finale): show interstitial.
-      unawaited(ads.showLevelClearInterstitial());
-      if (st.levelId == 50) {
-        save!.campaign.markVictorySeen();
-        screen = AppScreen.campaignVictory;
-      } else {
-        screen = AppScreen.levelSelect;
-      }
-      unawaited(persist(clearActive: true));
-      advancingSection = false;
-      notifyListeners();
-      return;
-    }
+    if (next >= level.sections.length) return;
+    advancingSection = true;
     campaignSectionIndex = next;
     statusMessage = null;
     _bootSection(level, next);
   }
 
-  void finishLevelFromUi() {
-    continueNextSection();
+  /// Leaves a finished level. Any interstitial plays here, in the natural break
+  /// after the player tapped, and is awaited so it can't cover the next puzzle.
+  Future<void> leaveFinishedLevel({bool playNext = false}) async {
+    final st = engine.state;
+    if (advancingSection || st.levelId == null) return;
+    advancingSection = true;
+    puzzleActive = false;
+    notifyListeners();
+    final finishedId = st.levelId!;
+    await ads.showLevelClearInterstitial(
+      levelsCleared: save!.campaign.completedCount,
+    );
+    advancingSection = false;
+    statusMessage = null;
+    final nextId = levelAfter(finishedId);
+    if (nextId == null) {
+      save!.campaign.markVictorySeen();
+      screen = AppScreen.campaignVictory;
+      unawaited(persist(clearActive: true));
+      notifyListeners();
+      return;
+    }
+    if (playNext) {
+      startLevel(nextId);
+      return;
+    }
+    selectedWorld = CampaignCatalog.worldForLevel(finishedId).index;
+    screen = AppScreen.levelSelect;
+    unawaited(persist(clearActive: true));
+    notifyListeners();
   }
 
   bool toggleBloomMode() {
     if (!engine.state.bloomEnabled) return false;
     if (!engine.state.bloom.canPrune) return false;
     bloomPruneMode = !bloomPruneMode;
+    // Backing out of a revive with nothing playable ends the run again.
+    if (!bloomPruneMode &&
+        !engine.state.board.anyPieceFits(engine.state.tray)) {
+      engine.markGameOver();
+    }
     notifyListeners();
     return bloomPruneMode;
+  }
+
+  /// Reopens a stuck board so a saved Bloom charge can free a cell.
+  void reviveWithBloom() {
+    if (engine.reviveForPrune() == null) return;
+    bloomPruneMode = true;
+    statusMessage = null;
+    notifyListeners();
   }
 
   /// Spend petals for one bloom charge (economy sink).
@@ -729,7 +785,6 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     bloomPruneMode = false;
     unawaited(audio.playBloom());
     unawaited(haptics.medium());
-    _checkCampaignObjectives();
     if (engine.state.phase == GamePhase.levelComplete) {
       _onSectionComplete();
     }
@@ -761,9 +816,14 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<bool> tryRescue() async {
+    if (rescueInProgress) return false;
+    rescueInProgress = true;
+    statusMessage = null;
+    notifyListeners();
     final earned = await ads.showRewarded(placement: 'game_over_rescue');
+    rescueInProgress = false;
     if (!earned) {
-      statusMessage = 'Reward not earned — no rescue granted';
+      statusMessage = 'No ad available or not finished. Try again in a moment.';
       notifyListeners();
       return false;
     }
@@ -814,7 +874,22 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     bloomPruneMode = false;
     showingSectionIntro = false;
     advancingSection = false;
-    unawaited(persist(clearActive: true));
+    statusMessage = null;
+    // A paused run stays resumable from Continue Garden; a finished one doesn't.
+    final phase = engine.state.phase;
+    final finished =
+        phase == GamePhase.gameOver ||
+        (phase == GamePhase.levelComplete &&
+            !(engine.state.levelId != null &&
+                engine.state.sectionIndex + 1 <
+                    CampaignCatalog.level(engine.state.levelId!)
+                        .sections
+                        .length));
+    if (finished) {
+      unawaited(persist(clearActive: true));
+    } else {
+      unawaited(persist(activeGame: engine.state));
+    }
     screen = AppScreen.mainMenu;
     notifyListeners();
   }
@@ -844,10 +919,14 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   /// Guest: clears local device data only.
   Future<bool> deleteAccountAndData() async {
     final uid = auth.uid;
+    // A delayed push firing after deletion would recreate the player's data.
+    _cloudPushTimer?.cancel();
+    _cloudPushTimer = null;
     if (uid != null) {
       final reauthed = await auth.reauthenticateWithGoogle();
       if (!reauthed) {
-        statusMessage = auth.errorMessage ??
+        statusMessage =
+            auth.errorMessage ??
             'Could not verify Google Sign-In. Account was not deleted.';
         notifyListeners();
         return false;
@@ -855,8 +934,7 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
       final cloudOk = await cloud.deleteCloudData(uid);
       final authOk = await auth.deleteAccount(reauthenticateFirst: false);
       if (!authOk) {
-        statusMessage = auth.errorMessage ??
-            'Cloud data may be gone, but Auth deletion failed. Retry or email support.';
+        statusMessage = auth.errorMessage ?? 'Cloud data may be gone, but Auth deletion failed. Retry or email support.';
         notifyListeners();
         return false;
       }
@@ -892,6 +970,8 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Only hard-pause on backgrounded — not notification shade (inactive).
     if (state == AppLifecycleState.paused) {
+      _backgroundedAt = DateTime.now();
+      _pushToCloudNow();
       unawaited(audio.pauseMusic());
       if (puzzleActive && engine.state.phase == GamePhase.playing) {
         engine.pause();
@@ -902,14 +982,35 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       unawaited(audio.resumeMusic());
       unawaited(connectivity.checkNow());
-      if (!puzzleActive) {
-        unawaited(ads.showAppOpenIfAllowed(puzzleActive: puzzleActive));
-      }
+      _onReturnedToApp();
     }
+  }
+
+  void _onReturnedToApp() {
+    final backgroundedAt = _backgroundedAt;
+    _backgroundedAt = null;
+    // Consent may have been unreachable at launch. Retry only here, away from
+    // play, so its form can never interrupt a puzzle.
+    if (AppConfig.adsEnabled && !ads.isReady && !puzzleActive) {
+      unawaited(ads.initialize());
+    }
+    if (backgroundedAt == null || puzzleActive) return;
+    // Only quiet menu screens: not login, sign-in overlays, or a live board.
+    final quietScreen =
+        screen == AppScreen.mainMenu ||
+        screen == AppScreen.worldMap ||
+        screen == AppScreen.levelSelect;
+    if (!quietScreen || auth.status == AuthStatus.signingIn) return;
+    unawaited(
+      ads.showAppOpenIfAllowed(
+        timeInBackground: DateTime.now().difference(backgroundedAt),
+      ),
+    );
   }
 
   @override
   void dispose() {
+    _cloudPushTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     connectivity.removeListener(_onConnectivity);
     if (_authListener != null) {

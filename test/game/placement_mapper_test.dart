@@ -130,10 +130,7 @@ void main() {
       );
       expect(open.valid, isTrue);
       expect(open.row != blocked.row || open.col != blocked.col, isTrue);
-      expect(
-        filled.canPlace(ShapeCatalog.square, open.row, open.col),
-        isTrue,
-      );
+      expect(filled.canPlace(ShapeCatalog.square, open.row, open.col), isTrue);
     });
   });
 }

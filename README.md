@@ -2,7 +2,7 @@
 
 Original Flutter block-placement puzzle for Android and iOS.
 
-Plant polyomino pieces on a garden board, bloom completed rows and columns, chain combos, and spend **Bloom Charge** to prune a stuck cell. Includes Classic high-score mode and a finite **50-level** campaign across five worlds.
+Plant polyomino pieces on a garden board, bloom completed rows and columns, chain combos, and spend **Bloom Charge** to prune a stuck cell. Includes Classic high-score mode and a **500-level** campaign across ten worlds.
 
 > **Name note:** The working title *BlockBloom* conflicts with pending trademarks and existing store apps. This project ships as **PetalGrid**. Spot checks are not legal clearance.
 
@@ -31,7 +31,7 @@ Firebase is enabled for Android (`firebaseEnabled = true`). Ads still use Google
 
 ```
 lib/game/       # Pure puzzle rules
-lib/campaign/   # 50 levels + progression
+lib/campaign/   # 500 levels + progression
 lib/services/   # Saves, auth, ads, connectivity
 lib/ui/         # Screens + board widgets
 test/           # Unit + widget tests

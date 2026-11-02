@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 
+import '../../campaign/campaign_catalog.dart';
 import '../../state/app_state.dart';
 import '../theme/petal_theme.dart';
 import '../widgets/brand_logo.dart';
@@ -41,7 +42,7 @@ class CampaignVictoryScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                'You cultivated all fifty gardens across five worlds. The Conservatory remembers your care.',
+                'You cultivated all ${CampaignCatalog.totalLevels} gardens across ${CampaignCatalog.worlds.length} worlds. The Conservatory remembers your care.',
                 textAlign: TextAlign.center,
                 style: PetalText.body(context),
               ),

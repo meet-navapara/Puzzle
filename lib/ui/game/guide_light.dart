@@ -41,7 +41,10 @@ class _GuideLightState extends State<GuideLight>
   void initState() {
     super.initState();
     _cells = List<(int, int)>.of(widget.cells);
-    _controller = AnimationController(vsync: this, duration: GuideLight.duration);
+    _controller = AnimationController(
+      vsync: this,
+      duration: GuideLight.duration,
+    );
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed) _scheduleFinish();
     });
@@ -106,7 +109,8 @@ class _GuideLightPainter extends CustomPainter {
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round
         ..color = GuideLight.copper.withValues(alpha: 0.38 * fade);
-      final path = Path()..moveTo(travel.points.first.dx, travel.points.first.dy);
+      final path = Path()
+        ..moveTo(travel.points.first.dx, travel.points.first.dy);
       for (final point in travel.points.skip(1)) {
         path.lineTo(point.dx, point.dy);
       }
@@ -142,8 +146,7 @@ class _GuideLightPainter extends CustomPainter {
       ..color = GuideLight.copper.withValues(alpha: 0.95 * opacity);
     canvas.drawCircle(mark, cell * 0.16 * scale, ring);
 
-    final core = Paint()
-      ..color = GuideLight.ivory.withValues(alpha: opacity);
+    final core = Paint()..color = GuideLight.ivory.withValues(alpha: opacity);
     canvas.drawCircle(mark, cell * 0.045 * scale, core);
   }
 

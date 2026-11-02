@@ -8,6 +8,10 @@ class PetalText {
 
   static const double _maxScale = 1.2;
 
+  /// Null on devices, which use the system font. The store-asset renderer sets
+  /// it because Flutter's test environment otherwise draws text as solid blocks.
+  static String? renderFontFamily;
+
   static TextStyle _base(
     BuildContext context, {
     required double size,
@@ -24,7 +28,7 @@ class PetalText {
       decoration: TextDecoration.none,
       decorationColor: Colors.transparent,
       decorationThickness: 0,
-      fontFamily: null,
+      fontFamily: renderFontFamily,
       letterSpacing: 0,
     );
   }

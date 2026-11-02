@@ -35,8 +35,7 @@ class ConnectionRequiredScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                app.connectivity.lastError ??
-                    'PetalGrid needs a working internet connection to enter play modes. Your local save is kept safe.',
+                app.connectivity.lastError ?? 'PetalGrid needs a working internet connection to enter play modes. Your local save is kept safe.',
                 textAlign: TextAlign.center,
                 style: PetalText.body(context),
               ),

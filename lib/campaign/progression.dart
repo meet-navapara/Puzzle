@@ -21,23 +21,34 @@ class CampaignProgression {
 
   int get completedCount => _levels.values.where((p) => p.completed).length;
 
-  int get totalLevels => 50;
+  int get totalLevels => CampaignCatalog.totalLevels;
+
+  int get totalStars => _levels.values.fold(0, (sum, p) => sum + p.stars);
+
+  /// The level to offer next: the first unlocked level not yet cleared, or the
+  /// finale once everything is done.
+  int get nextLevelId {
+    for (var id = 1; id <= totalLevels; id++) {
+      final p = progressOf(id);
+      if (p.unlocked && !p.completed) return id;
+    }
+    return totalLevels;
+  }
 
   /// Apply a finished level run. Returns petals newly awarded (0 if replay).
+  /// [moves] counts rated moves for stars; omit it to record a plain clear.
   int completeLevel({
     required int levelId,
     required int score,
     required int sectionsDone,
+    int? moves,
   }) {
-    if (levelId < 1 || levelId > 50) {
+    if (levelId < 1 || levelId > totalLevels) {
       throw ArgumentError('Invalid level $levelId');
     }
     final def = CampaignCatalog.level(levelId);
     final prev = progressOf(levelId);
-    var stars = 0;
-    for (var i = 0; i < def.starsThresholds.length; i++) {
-      if (score >= def.starsThresholds[i]) stars = i + 1;
-    }
+    var stars = moves == null ? 1 : def.starsForMoves(moves);
     if (stars < prev.stars) stars = prev.stars;
 
     final best = score > prev.bestScore ? score : prev.bestScore;
@@ -60,8 +71,7 @@ class CampaignProgression {
           : prev.sectionsCompleted,
     );
 
-    // Unlock next level (never 51).
-    if (levelId < 50) {
+    if (levelId < totalLevels) {
       final next = progressOf(levelId + 1);
       _levels[levelId + 1] = next.copyWith(unlocked: true);
     } else {
@@ -84,35 +94,56 @@ class CampaignProgression {
 
   void markVictorySeen() => campaignVictorySeen = true;
 
+  /// Only levels the player has touched are stored, which keeps the save small
+  /// (a fresh save would otherwise carry 500 identical entries).
   Map<String, dynamic> toJson() => {
+    'catalog': CampaignCatalog.catalogVersion,
     'petals': petals,
     'campaignComplete': campaignComplete,
     'victorySeen': campaignVictorySeen,
     'worldRewards': _worldRewardsClaimed.toList(),
-    'levels': {for (final e in _levels.entries) '${e.key}': e.value.toJson()},
+    'levels': {
+      for (final e in _levels.entries)
+        if (e.value.unlocked || e.value.completed) '${e.key}': e.value.toJson(),
+    },
   };
 
   factory CampaignProgression.fromJson(Map<String, dynamic> json) {
     final map = <int, LevelProgress>{};
     final raw = json['levels'] as Map<String, dynamic>? ?? {};
     for (final e in raw.entries) {
-      map[int.parse(e.key)] = LevelProgress.fromJson(
+      final id = int.tryParse(e.key);
+      if (id == null || id < 1 || id > CampaignCatalog.totalLevels) continue;
+      map[id] = LevelProgress.fromJson(
         Map<String, dynamic>.from(e.value as Map),
       );
     }
     final p = CampaignProgression(map);
     p.petals = json['petals'] as int? ?? 0;
-    p.campaignComplete = json['campaignComplete'] as bool? ?? false;
-    p.campaignVictorySeen = json['victorySeen'] as bool? ?? false;
-    final wr = (json['worldRewards'] as List?)?.cast<int>() ?? [];
-    p._worldRewardsClaimed.addAll(wr);
-    // Ensure level 1 unlocked.
-    if (!(p._levels[1]?.unlocked ?? false)) {
-      p._levels[1] = (p._levels[1] ?? const LevelProgress()).copyWith(
-        unlocked: true,
-      );
+
+    // Saves from the 50-level catalog keep cleared levels and petals, but their
+    // finale and world-reward flags described worlds that no longer exist.
+    final current =
+        (json['catalog'] as int? ?? 1) == CampaignCatalog.catalogVersion;
+    if (current) {
+      p.campaignComplete = json['campaignComplete'] as bool? ?? false;
+      p.campaignVictorySeen = json['victorySeen'] as bool? ?? false;
+      final wr = (json['worldRewards'] as List?)?.cast<int>() ?? const <int>[];
+      p._worldRewardsClaimed.addAll(wr);
     }
+    p._repairUnlocks();
     return p;
+  }
+
+  /// Level 1 is always open, and clearing a level always opens the next one.
+  /// Without this a player who finished the old level 50 would be stuck at 51.
+  void _repairUnlocks() {
+    _levels[1] = progressOf(1).copyWith(unlocked: true);
+    for (var id = 1; id < totalLevels; id++) {
+      if (progressOf(id).completed && !progressOf(id + 1).unlocked) {
+        _levels[id + 1] = progressOf(id + 1).copyWith(unlocked: true);
+      }
+    }
   }
 
   /// Merge guest + cloud: take max progress, never double-claim rewards.
@@ -121,7 +152,7 @@ class CampaignProgression {
     CampaignProgression b,
   ) {
     final merged = <int, LevelProgress>{};
-    for (var id = 1; id <= 50; id++) {
+    for (var id = 1; id <= CampaignCatalog.totalLevels; id++) {
       final pa = a.progressOf(id);
       final pb = b.progressOf(id);
       merged[id] = LevelProgress(

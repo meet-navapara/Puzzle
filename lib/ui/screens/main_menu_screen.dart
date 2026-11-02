@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../campaign/campaign_catalog.dart';
 import '../../core/app_config.dart';
 import '../../state/app_state.dart';
 import '../theme/petal_theme.dart';
@@ -20,139 +21,142 @@ class MainMenuScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: GardenBackdrop(
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _TopBar(
-                onSettings: () => app.go(AppScreen.settings),
-              ),
-              const SizedBox(height: 18),
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final tall = constraints.maxHeight > 560;
-                    return SingleChildScrollView(
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: constraints.maxHeight,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _BrandHero(compact: !tall),
-                            SizedBox(height: tall ? 18 : 12),
-                            _ProgressRibbon(
-                              completed: completed,
-                              petals: petals,
-                              best: best,
-                            ),
-                            SizedBox(height: tall ? 20 : 14),
-                            if (app.hasResumableGame) ...[
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _TopBar(onSettings: () => app.go(AppScreen.settings)),
+                const SizedBox(height: 18),
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final tall = constraints.maxHeight > 560;
+                      return SingleChildScrollView(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: constraints.maxHeight,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _BrandHero(compact: !tall),
+                              SizedBox(height: tall ? 18 : 12),
+                              _ProgressRibbon(
+                                completed: completed,
+                                petals: petals,
+                                best: best,
+                              ),
+                              SizedBox(height: tall ? 20 : 14),
+                              if (app.hasResumableGame) ...[
+                                _FeatureCard(
+                                  title: 'Continue Garden',
+                                  subtitle: 'Resume your saved mid-run board',
+                                  icon: Icons.play_circle_filled_rounded,
+                                  onTap: () {
+                                    if (app.guideHomeClassic ||
+                                        app.guideHomeDaily) {
+                                      _guardHome(context, app, () {});
+                                      return;
+                                    }
+                                    if (!app.resumeActiveGame() &&
+                                        context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'Could not resume — start a new garden.',
+                                              ),
+                                            ),
+                                          );
+                                    }
+                                  },
+                                  height: tall ? 96 : 84,
+                                  emphasized: true,
+                                  accent: surfaces.accentSoft,
+                                ),
+                                const SizedBox(height: 10),
+                              ],
                               _FeatureCard(
-                                title: 'Continue Garden',
-                                subtitle: 'Resume your saved mid-run board',
-                                icon: Icons.play_circle_filled_rounded,
-                                onTap: () {
-                                  if (app.guideHomeClassic || app.guideHomeDaily) {
-                                    _guardHome(context, app, () {});
-                                    return;
-                                  }
-                                  if (!app.resumeActiveGame() &&
-                                      context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Could not resume — start a new garden.',
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                },
-                                height: tall ? 96 : 84,
-                                emphasized: true,
+                                title: 'Classic Garden',
+                                subtitle: 'Endless play · beat your best',
+                                icon: Icons.spa_rounded,
+                                onTap: app.startClassic,
+                                height: tall ? 108 : 90,
+                                emphasized:
+                                    !app.hasResumableGame ||
+                                    app.guideHomeClassic,
+                                coached: app.guideHomeClassic,
+                                accent: surfaces.accent,
+                              ),
+                              const SizedBox(height: 10),
+                              _FeatureCard(
+                                title: 'Campaign',
+                                subtitle: completed == 0
+                                    ? '${CampaignCatalog.worlds.length} worlds · ${CampaignCatalog.totalLevels} levels'
+                                    : 'Next: level ${app.save!.campaign.nextLevelId} of ${CampaignCatalog.totalLevels}',
+                                icon: Icons.map_rounded,
+                                onTap: () =>
+                                    _guardHome(context, app, app.openWorldMap),
+                                height: tall ? 88 : 78,
                                 accent: surfaces.accentSoft,
                               ),
                               const SizedBox(height: 10),
-                            ],
-                            _FeatureCard(
-                              title: 'Classic Garden',
-                              subtitle:
-                                  'Endless bloom · chase your best score',
-                              icon: Icons.spa_rounded,
-                              onTap: app.startClassic,
-                              height: tall ? 108 : 90,
-                              emphasized: !app.hasResumableGame || app.guideHomeClassic,
-                              coached: app.guideHomeClassic,
-                              accent: surfaces.accent,
-                            ),
-                            const SizedBox(height: 10),
-                            _FeatureCard(
-                              title: 'Campaign',
-                              subtitle: 'Five worlds · 50 unique gardens',
-                              icon: Icons.map_rounded,
-                              onTap: () => _guardHome(context, app, app.openWorldMap),
-                              height: tall ? 88 : 78,
-                              accent: surfaces.accentSoft,
-                            ),
-                            const SizedBox(height: 10),
-                            _FeatureCard(
-                              title: 'Daily Dew',
-                              subtitle:
-                                  'Optional rewarded bonus · +15 petals',
-                              icon: Icons.water_drop_rounded,
-                              onTap: () => _guardHome(
-                                context,
-                                app,
-                                () => app.go(AppScreen.daily),
-                                allowWhen: app.guideHomeDaily,
-                              ),
-                              height: tall ? 88 : 78,
-                              coached: app.guideHomeDaily,
-                              accent: surfaces.blockPalette[2],
-                            ),
-                            SizedBox(height: tall ? 20 : 12),
-                            Center(
-                              child: TextButton.icon(
-                                onPressed: () => _showTutorial(context, app),
-                                icon: Icon(
-                                  Icons.menu_book_rounded,
-                                  size: 18,
-                                  color: surfaces.accent,
+                              _FeatureCard(
+                                title: 'Daily Dew',
+                                subtitle: 'Optional ad bonus · +15 petals',
+                                icon: Icons.water_drop_rounded,
+                                onTap: () => _guardHome(
+                                  context,
+                                  app,
+                                  () => app.go(AppScreen.daily),
+                                  allowWhen: app.guideHomeDaily,
                                 ),
-                                label: Text(
-                                  'How to Play',
-                                  style: PetalText.button(context).copyWith(
+                                height: tall ? 88 : 78,
+                                coached: app.guideHomeDaily,
+                                accent: surfaces.blockPalette[2],
+                              ),
+                              SizedBox(height: tall ? 20 : 12),
+                              Center(
+                                child: TextButton.icon(
+                                  onPressed: () => _showTutorial(context, app),
+                                  icon: Icon(
+                                    Icons.menu_book_rounded,
+                                    size: 18,
                                     color: surfaces.accent,
-                                    fontSize: 14,
+                                  ),
+                                  label: Text(
+                                    'How to Play',
+                                    style: PetalText.button(context).copyWith(
+                                      color: surfaces.accent,
+                                      fontSize: 14,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
-              ),
-              if (app.guideHomeClassic || app.guideHomeDaily)
-                _HomeCoach(
-                  daily: app.guideHomeDaily,
-                  onSkip: () {
-                    if (app.guideHomeClassic) {
-                      app.completeClassicTour();
-                    } else {
-                      app.completeDailyTour();
-                    }
-                  },
-                ),
-            ],
+                if (app.guideHomeClassic || app.guideHomeDaily)
+                  _HomeCoach(
+                    daily: app.guideHomeDaily,
+                    onSkip: () {
+                      if (app.guideHomeClassic) {
+                        app.completeClassicTour();
+                      } else {
+                        app.completeDailyTour();
+                      }
+                    },
+                  ),
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -250,10 +254,9 @@ class _HomeCoach extends StatelessWidget {
             children: [
               Text(
                 daily ? 'Step 2 · Daily Dew' : 'Step 1 · Classic Garden',
-                style: PetalText.caption(context).copyWith(
-                  color: surfaces.accent,
-                  fontWeight: FontWeight.w800,
-                ),
+                style: PetalText.caption(
+                  context,
+                ).copyWith(color: surfaces.accent, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 4),
               Text(

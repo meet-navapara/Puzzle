@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'petal_tokens.dart';
+import 'petal_typography.dart';
 
 export '../../core/theme_preference.dart';
 export 'petal_tokens.dart';
@@ -240,6 +241,7 @@ class PetalTheme {
     double height = 1.25,
   }) {
     return TextStyle(
+      fontFamily: PetalText.renderFontFamily,
       fontSize: size,
       fontWeight: weight,
       height: height,
@@ -313,8 +315,8 @@ class PetalTheme {
       colorScheme: colorScheme,
       extensions: [surfaces],
       scaffoldBackgroundColor: surfaces.backdropTop,
-      textTheme: textTheme,
-      primaryTextTheme: textTheme,
+      textTheme: textTheme.apply(fontFamily: PetalText.renderFontFamily),
+      primaryTextTheme: textTheme.apply(fontFamily: PetalText.renderFontFamily),
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         elevation: 0,

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../campaign/campaign_catalog.dart';
 import '../campaign/progression.dart';
 import '../core/app_config.dart';
 import '../game/game_engine.dart';
@@ -35,7 +36,8 @@ class PlayerSettings {
   final bool privacyAccepted;
   final AppThemePreference themePreference;
 
-  /// When true, cold start skips Welcome and opens Main Menu.
+  /// When true, the player has chosen Google or Guest, so cold start skips the
+  /// login screen. Stored under a new key so existing installs see it once.
   final bool welcomeSeen;
 
   /// Interactive lesson on campaign level 1 has been finished or skipped.
@@ -92,7 +94,7 @@ class PlayerSettings {
     'tutorial': tutorialSeen,
     'privacy': privacyAccepted,
     'theme': themePreference.name,
-    'welcomeSeen': welcomeSeen,
+    'loginSeen': welcomeSeen,
     'tutorialL1': tutorialLevel1Done,
     'tutorialL2': tutorialLevel2Done,
     'tutorialClassic': tutorialClassicDone,
@@ -115,7 +117,7 @@ class PlayerSettings {
       tutorialSeen: json['tutorial'] as bool? ?? false,
       privacyAccepted: json['privacy'] as bool? ?? false,
       themePreference: theme,
-      welcomeSeen: json['welcomeSeen'] as bool? ?? false,
+      welcomeSeen: json['loginSeen'] as bool? ?? false,
       tutorialLevel1Done: json['tutorialL1'] as bool? ?? false,
       tutorialLevel2Done: json['tutorialL2'] as bool? ?? false,
       tutorialClassicDone: json['tutorialClassic'] as bool? ?? false,
@@ -199,7 +201,7 @@ class LocalSaveSnapshot {
       }
     }
     return LocalSaveSnapshot(
-      schemaVersion: schema,
+      schemaVersion: AppConfig.saveSchemaVersion,
       settings: PlayerSettings.fromJson(
         Map<String, dynamic>.from(json['settings'] as Map? ?? {}),
       ),
@@ -207,11 +209,7 @@ class LocalSaveSnapshot {
         Map<String, dynamic>.from(json['campaign'] as Map? ?? {}),
       ),
       classicBest: json['classicBest'] as int? ?? 0,
-      activeGame: json['activeGame'] != null
-          ? GameState.fromJson(
-              Map<String, dynamic>.from(json['activeGame'] as Map),
-            )
-          : null,
+      activeGame: _restoreActiveGame(json['activeGame'], schema),
       guestId: json['guestId'] as String?,
       linkedUid: json['linkedUid'] as String?,
       updatedAt: json['updatedAt'] != null
@@ -219,6 +217,24 @@ class LocalSaveSnapshot {
           : null,
       lastDailyClaimUtc: daily,
     );
+  }
+}
+
+/// A saved run is dropped if its level no longer matches the catalog; resuming
+/// it would crash on a missing section or play a different puzzle.
+GameState? _restoreActiveGame(Object? raw, int schema) {
+  if (raw == null) return null;
+  try {
+    final game = GameState.fromJson(Map<String, dynamic>.from(raw as Map));
+    if (game.mode != GameMode.campaign) return game;
+    if (schema < 2) return null;
+    final level = CampaignCatalog.byId[game.levelId];
+    if (level == null || game.sectionIndex >= level.sections.length) {
+      return null;
+    }
+    return game;
+  } catch (_) {
+    return null;
   }
 }
 

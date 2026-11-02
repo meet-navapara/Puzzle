@@ -56,17 +56,19 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<bool> signInWithGoogle() async {
+    status = AuthStatus.signingIn;
+    errorMessage = null;
+    notifyListeners();
+    // A slow start can leave Firebase down; try again now the player asked.
+    if (!_firebaseUsable) await FirebaseBootstrap.ensureInitialized();
     if (!_firebaseUsable) {
       errorMessage =
-          'Firebase is not ready. Add this PC debug SHA-1 in Firebase Console, '
-          're-download google-services.json, then fully restart the app.';
+          'Google Sign-In is unavailable right now. Play as a guest '
+          'and link your account later from Settings.';
       status = AuthStatus.error;
       notifyListeners();
       return false;
     }
-    status = AuthStatus.signingIn;
-    errorMessage = null;
-    notifyListeners();
     try {
       _auth ??= FirebaseAuth.instance;
       await _googleSignIn.initialize(
@@ -87,17 +89,27 @@ class AuthService extends ChangeNotifier {
         errorMessage = null;
         status = AuthStatus.guest;
       } else {
-        errorMessage = 'Google Sign-In failed';
+        debugPrint('Google Sign-In failed: ${e.code} ${e.description}');
+        errorMessage =
+            'Google Sign-In failed. Check your connection and try again.';
         status = AuthStatus.error;
       }
       notifyListeners();
       return false;
     } catch (e) {
-      errorMessage = 'Sign-in failed. Check network and Firebase setup.';
+      debugPrint('Sign-in failed: $e');
+      errorMessage = 'Sign-in failed. Check your connection and try again.';
       status = AuthStatus.error;
       notifyListeners();
       return false;
     }
+  }
+
+  void clearError() {
+    if (errorMessage == null) return;
+    errorMessage = null;
+    if (status == AuthStatus.error) status = AuthStatus.guest;
+    notifyListeners();
   }
 
   Future<void> signOut() async {
@@ -164,8 +176,7 @@ class AuthService extends ChangeNotifier {
       return true;
     } on FirebaseAuthException catch (e) {
       if (e.code == 'requires-recent-login') {
-        errorMessage =
-            'Account deletion requires recent sign-in. Confirm Google Sign-In, then retry.';
+        errorMessage = 'Account deletion requires recent sign-in. Confirm Google Sign-In, then retry.';
       } else {
         errorMessage = 'Account deletion failed (${e.code}).';
       }

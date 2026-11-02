@@ -45,9 +45,7 @@ class TutorialCoach {
           final placed = state.board.tryPlace(shape, r, c, piece.colorIndex);
           if (placed == null) continue;
           final clear = placed.findClears();
-          final cells = {
-            for (final (dr, dc) in shape.cells) (r + dr, c + dc),
-          };
+          final cells = {for (final (dr, dc) in shape.cells) (r + dr, c + dc)};
           var score = clear.lineCount * 1000 + clear.cellsCleared * 15;
           score += _lineBuildScore(state.board, shape, r, c);
           score += shape.cellCount;

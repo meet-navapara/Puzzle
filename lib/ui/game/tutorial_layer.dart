@@ -166,7 +166,10 @@ class TutorialCoachBanner extends StatelessWidget {
             children: [
               Text(title, style: PetalText.section(context)),
               const SizedBox(height: 4),
-              Text(message, style: PetalText.body(context).copyWith(height: 1.35)),
+              Text(
+                message,
+                style: PetalText.body(context).copyWith(height: 1.35),
+              ),
               if (feedback.isNotEmpty) ...[
                 const SizedBox(height: 6),
                 Text(
@@ -187,7 +190,10 @@ class TutorialCoachBanner extends StatelessWidget {
                       onPressed: onToggleHint,
                       child: Text(hintOn ? 'Hide hint' : 'Hint'),
                     ),
-                  TextButton(onPressed: onSkip, child: const Text('Skip tutorial')),
+                  TextButton(
+                    onPressed: onSkip,
+                    child: const Text('Skip tutorial'),
+                  ),
                   if (phase == TutorialPhase.explain)
                     ElevatedButton(
                       onPressed: onContinue,

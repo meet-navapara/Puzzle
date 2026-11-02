@@ -1,9 +1,6 @@
 /// Beginner cards shown before the first guided levels.
 class TutorialCard {
-  const TutorialCard({
-    required this.title,
-    required this.body,
-  });
+  const TutorialCard({required this.title, required this.body});
 
   final String title;
   final String body;
@@ -15,23 +12,19 @@ class TutorialCopy {
   static const cards = <TutorialCard>[
     TutorialCard(
       title: 'Welcome to PetalGrid',
-      body:
-          'PetalGrid is a garden puzzle. You plant colorful pieces on a board and grow a score by filling space.',
+      body: 'PetalGrid is a garden puzzle. You plant colorful pieces on a board and grow a score by filling space.',
     ),
     TutorialCard(
       title: 'How to play',
-      body:
-          'Drag a piece from the tray onto empty cells. You can also tap a piece, then tap the board. Pieces cannot overlap or sit on blocked soil.',
+      body: 'Drag a piece from the tray onto empty cells. You can also tap a piece, then tap the board. Pieces cannot overlap or sit on blocked soil.',
     ),
     TutorialCard(
       title: 'How to finish',
-      body:
-          'Fill every open cell in a row or a column and that line blooms — the pieces clear and you score. Level 1 ends when you reach the score goal. Level 2 ends after you bloom two lines.',
+      body: 'Fill every open cell in a row or a column and that line blooms — the pieces clear and you score. Level 1 ends when you reach the score goal. Level 2 ends after you bloom two lines.',
     ),
     TutorialCard(
       title: 'A good move',
-      body:
-          'Straight pieces are easiest for a first bloom. Combos happen when you clear again on the next plant. We will show the first move, then you try the next one.',
+      body: 'Straight pieces are easiest for a first bloom. Combos happen when you clear again on the next plant. We will show the first move, then you try the next one.',
     ),
   ];
 

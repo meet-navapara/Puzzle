@@ -16,7 +16,8 @@ class BlockMaterial {
     double borderWidth = 1.1,
     Color? borderOverride,
   }) {
-    final borderColor = borderOverride ??
+    final borderColor =
+        borderOverride ??
         (isLight
             ? Color.lerp(color, const Color(0xFF1A1A1A), 0.24)!
             : Color.lerp(color, Colors.white, 0.18)!);
@@ -35,12 +36,7 @@ class BlockMaterial {
         stops: const [0.0, 0.45, 1.0],
       ),
       boxShadow: placing && !isLight
-          ? [
-              BoxShadow(
-                color: color.withValues(alpha: 0.45),
-                blurRadius: 8,
-              ),
-            ]
+          ? [BoxShadow(color: color.withValues(alpha: 0.45), blurRadius: 8)]
           : lifted
           ? PetalShadows.lift(surfaces.shadow, light: isLight)
           : PetalShadows.blockDepth(surfaces.shadow, light: isLight),

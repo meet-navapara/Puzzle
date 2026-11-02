@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_config.dart';
 import '../../state/app_state.dart';
 import '../theme/petal_theme.dart';
+import '../widgets/external_link.dart';
 
 class PrivacyScreen extends StatelessWidget {
   const PrivacyScreen({super.key});
@@ -44,7 +44,7 @@ class PrivacyScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'PetalGrid collects only what is needed for gameplay saves, optional Google Sign-In, cloud sync, and advertising SDKs when enabled.',
+              'PetalGrid collects only what is needed for gameplay saves, optional Google Sign-In, cloud sync, and advertising.',
               style: PetalText.body(context),
             ),
             const SizedBox(height: 12),
@@ -52,7 +52,7 @@ class PrivacyScreen extends StatelessWidget {
               '• Guest mode stores progress locally on-device.\n'
               '• Google Sign-In uses Firebase Authentication (account email/UID).\n'
               '• Cloud saves use Cloud Firestore under your UID.\n'
-              '• Ads use Google Mobile Ads (test units while developing; production IDs later).\n'
+              '• Ads use Google Mobile Ads. Where required, you are asked for consent first.\n'
               '• We do not request contacts, precise location, or microphone.\n'
               '• Audience: general casual puzzle players (not designed for children).',
               style: PetalText.supporting(context)
@@ -60,53 +60,30 @@ class PrivacyScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () => _open(AppConfig.privacyPolicyUrl, context),
+              onPressed: () =>
+                  openExternalLink(context, AppConfig.privacyPolicyUrl),
               child: const Text('Open privacy policy'),
             ),
             const SizedBox(height: 8),
             OutlinedButton(
-              onPressed: () => _open(AppConfig.termsUrl, context),
+              onPressed: () => openExternalLink(context, AppConfig.termsUrl),
               child: const Text('Terms of service'),
             ),
             TextButton(
-              onPressed: () => _open(AppConfig.supportUrl, context),
+              onPressed: () => openExternalLink(context, AppConfig.supportUrl),
               child: const Text('Support'),
             ),
             TextButton(
-              onPressed: () => _open(AppConfig.accountDeletionUrl, context),
+              onPressed: () =>
+                  openExternalLink(context, AppConfig.accountDeletionUrl),
               child: const Text('Account deletion help (web)'),
             ),
             TextButton(
-              onPressed: () => _mailSupport(context),
+              onPressed: () => openExternalLink(
+                context,
+                'mailto:${AppConfig.supportEmail}?subject=PetalGrid%20support',
+              ),
               child: Text('Email ${AppConfig.supportEmail}'),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              decoration: BoxDecoration(
-                color: surfaces.panel,
-                borderRadius: BorderRadius.circular(PetalRadius.lg),
-                border: Border.all(color: surfaces.panelBorder),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'I understand the privacy summary',
-                      style: PetalText.body(context),
-                    ),
-                  ),
-                  Switch(
-                    value: app.save?.settings.privacyAccepted ?? false,
-                    activeThumbColor: surfaces.accent,
-                    onChanged: app.save == null
-                        ? null
-                        : (v) => app.updateSettings(
-                            app.save!.settings.copyWith(privacyAccepted: v),
-                          ),
-                  ),
-                ],
-              ),
             ),
             const SizedBox(height: 20),
             Text('Your data', style: PetalText.section(context)),
@@ -116,10 +93,8 @@ class PrivacyScreen extends StatelessWidget {
                 onPressed: () => _confirmDeleteAccount(context, app),
                 child: Text(
                   'Delete account & cloud data',
-                  style: PetalText.button(context).copyWith(
-                    color: surfaces.danger,
-                    fontSize: 14,
-                  ),
+                  style: PetalText.button(context)
+                      .copyWith(color: surfaces.danger, fontSize: 14),
                 ),
               )
             else
@@ -127,10 +102,8 @@ class PrivacyScreen extends StatelessWidget {
                 onPressed: () => _confirmClearLocal(context, app),
                 child: Text(
                   'Clear local data on this device',
-                  style: PetalText.button(context).copyWith(
-                    color: surfaces.danger,
-                    fontSize: 14,
-                  ),
+                  style: PetalText.button(context)
+                      .copyWith(color: surfaces.danger, fontSize: 14),
                 ),
               ),
             Text(
@@ -143,24 +116,6 @@ class PrivacyScreen extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Future<void> _open(String url, BuildContext context) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
-
-  Future<void> _mailSupport(BuildContext context) async {
-    final uri = Uri(
-      scheme: 'mailto',
-      path: AppConfig.supportEmail,
-      query: 'subject=PetalGrid support',
-    );
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    }
   }
 
   Future<void> _confirmDeleteAccount(BuildContext context, AppState app) async {

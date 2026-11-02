@@ -53,6 +53,7 @@ class BoardView extends StatelessWidget {
   final List<int> clearCols;
   final int clearToken;
   final bool clearActive;
+
   /// Lines that would bloom if the current ghost placement is confirmed.
   final List<int> previewClearRows;
   final List<int> previewClearCols;
@@ -94,15 +95,13 @@ class BoardView extends StatelessWidget {
                         return Expanded(
                           child: Row(
                             children: List.generate(board.size, (c) {
-                              final placing =
-                                  placePulseCells.contains((r, c));
+                              final placing = placePulseCells.contains((r, c));
                               return Expanded(
                                 child: _CellTile(
                                   cell: board.at(r, c),
                                   placing: placing,
                                   placeScale: placing ? placeScale : 1.0,
-                                  pruneMode:
-                                      pruneMode && board.at(r, c).filled,
+                                  pruneMode: pruneMode && board.at(r, c).filled,
                                   onTap: onCellTap == null
                                       ? null
                                       : () => onCellTap!(r, c),
@@ -181,9 +180,7 @@ class BoardView extends StatelessWidget {
                                   ? surfaces
                                         .blockPalette[ghostColorIndex %
                                             surfaces.blockPalette.length]
-                                        .withValues(
-                                          alpha: isLight ? 0.8 : 0.62,
-                                        )
+                                        .withValues(alpha: isLight ? 0.8 : 0.62)
                                   : surfaces.invalidGhost,
                               glow: ghostValid
                                   ? surfaces.accent.withValues(alpha: 0.35)
@@ -325,15 +322,11 @@ class _CellTile extends StatelessWidget {
         border: Border.all(color: surfaces.cellBorder),
       );
     } else if (cell.filled) {
-      final fill = surfaces
-          .blockPalette[cell.colorIndex % surfaces.blockPalette.length];
+      final fill =
+          surfaces.blockPalette[cell.colorIndex % surfaces.blockPalette.length];
       decoration = BlockMaterial.filled(
         color: placing
-            ? Color.lerp(
-                fill,
-                surfaces.placeFlash,
-                isLight ? 0.22 : 0.35,
-              )!
+            ? Color.lerp(fill, surfaces.placeFlash, isLight ? 0.22 : 0.35)!
             : fill,
         surfaces: surfaces,
         isLight: isLight,
@@ -422,8 +415,9 @@ class _GhostPainter extends CustomPainter {
       ..color = stroke;
     final aura = Paint()
       ..color = glow
-      ..maskFilter =
-          softGlow ? const MaskFilter.blur(BlurStyle.normal, 6) : null;
+      ..maskFilter = softGlow
+          ? const MaskFilter.blur(BlurStyle.normal, 6)
+          : null;
 
     for (final (dr, dc) in shape.cells) {
       final r = row + dr;

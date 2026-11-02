@@ -1,49 +1,74 @@
-# Play Console — Data Safety / App content (PetalGrid)
+# Play Console: App content answers (PetalGrid)
 
-Use with package `com.petalgrid.game`. Support email: **navaparameetdev@gmail.com**.
+Package `com.petalgrid.game`. Answer every question honestly; these reflect what the
+code does today. If you add an SDK, revisit this page.
 
-## URLs to paste
+## URLs
 
 | Field | URL |
 | --- | --- |
 | Privacy policy | https://petalgrid-e7287.web.app/privacy.html |
 | Terms (optional) | https://petalgrid-e7287.web.app/terms.html |
 | Support | https://petalgrid-e7287.web.app/support.html |
-| **Account deletion** | https://petalgrid-e7287.web.app/delete-account.html |
-
-## Audience
-
-- **Target audience:** General (not designed for children / not Families)
-- Do **not** check “Designed for children” unless you implement Families ads policies
+| Account deletion | https://petalgrid-e7287.web.app/delete-account.html |
 
 ## Ads
 
-- App contains ads: **Yes** (Google Mobile Ads)
-- While developing: `adsUseTestIds = true` + test APPLICATION_ID (safe)
-- Before production release: replace with real AdMob IDs, set `adsUseTestIds = false`, add UMP for EEA/UK
-- Never click your own live ads
+Does your app contain ads? **Yes.** (Google Mobile Ads: rewarded, interstitial, app open.)
 
-## Data collected (declare honestly)
+Advertising ID: **Yes**, the app uses it. Purpose: **Advertising or marketing**.
 
-| Data type | Collected? | Shared? | Purpose |
-| --- | --- | --- | --- |
-| Email address | Yes (via Google Sign-In, optional) | Shared with Google/Firebase as processor | Account management |
-| User IDs | Yes (Firebase UID, guest id) | Firebase | App functionality / cloud save |
-| App activity / gameplay progress | Yes (saves, scores) | Firestore when signed in | App functionality |
-| Device or other IDs (Advertising ID) | Yes when ads enabled | AdMob | Advertising |
+## App access
 
-Not collected for core play: precise location, contacts, photos, mic, SMS, health, financial info.
+**All functionality is available without special access.** Guest mode needs no
+account, so reviewers do not need credentials.
 
-## Account deletion (App content)
+## Target audience
 
-- Users can delete in-app (Settings / Privacy) after Google re-auth
-- Web path: account deletion URL above + email navaparameetdev@gmail.com
-- Deletes Auth user + `users/{uid}` + local data on that device
+Ages **13 and over** (select 13-15, 16-17, 18+). Do not select any age under 13: the
+app's ad setup and consent flow are not built for child-directed traffic. Appeal to
+children: **No**.
 
-## Still required before upload (not done by this doc)
+## Content rating (IARC questionnaire)
 
-1. Real AdMob production credentials (keep test for now per owner)
-2. UMP consent when serving personalized ads in EEA/UK
-3. Release signing keystore (not debug)
-4. Original launcher icon / branding
-5. Content rating questionnaire
+Category: **Game**. Answer **No** to violence, sexual content, profanity, drugs and
+gambling. Users do not interact or share content; no location sharing. Purchases:
+**none**. Expect a rating of Everyone / PEGI 3. Ads present is declared separately.
+
+## News, COVID-19, government, financial, health
+
+Not applicable: answer **No** to each.
+
+## Data safety
+
+Does your app collect or share required user data? **Yes.**
+Is all data encrypted in transit? **Yes.**
+Can users request deletion? **Yes**, in-app and at the account deletion URL above.
+
+| Data type | Collected | Shared | Optional | Purpose |
+| --- | --- | --- | --- | --- |
+| Personal info → Email address | Yes | No | Yes (Google Sign-In only) | Account management |
+| Personal info → User IDs | Yes | No | Yes (Google Sign-In only) | App functionality, Account management |
+| App activity → Other actions (levels, scores) | Yes | No | Yes (cloud save when signed in) | App functionality |
+| App info and performance → Diagnostics | Yes | Yes (Google Mobile Ads) | No | Advertising or marketing |
+| Device or other IDs → Advertising ID | Yes | Yes (Google Mobile Ads) | No | Advertising or marketing, Fraud prevention and security |
+
+Firebase and AdMob act for you as processors or per Google's own terms; check
+[Google's AdMob Data safety guidance](https://developers.google.com/admob/android/privacy/play-data-disclosure)
+when you fill this in, since it is updated with each SDK version.
+
+Not collected: location, contacts, photos, microphone, SMS, health, financial info.
+Guest progress stays on the device and is not collected.
+
+## Account deletion
+
+- In-app path: **Settings → Delete account & cloud data** (also under Privacy).
+- Web path: the account deletion URL above, for people who no longer have the app.
+- Deleted: Firebase Auth user, Firestore `users/{uid}`, and local data on that device.
+- Guests: **Settings → Clear local data on this device**.
+
+## Consent (EEA, UK, Switzerland)
+
+The app shows Google's UMP consent form before any ad request where required, and
+offers "Ad privacy choices" in Settings. You must publish the GDPR message in AdMob
+for this to appear; see `docs/OWNER_CHECKLIST.md` step 1.

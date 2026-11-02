@@ -1,40 +1,35 @@
 # Android release setup (PetalGrid)
 
-## What was configured locally
+## Signing
 
-- Upload keystore: `android/keystore/petalgrid-upload.jks` (gitignored)
-- Credentials backup: `android/keystore/CREDENTIALS.txt` (gitignored) — **back this up offline**
-- `android/key.properties` (gitignored)
-- Release signing wired in `android/app/build.gradle.kts`
-- Launcher icons generated from `assets/branding/app_icon.png`
+Release signing reads `android/key.properties` (gitignored). Start from
+`android/key.properties.example`. Without that file a release build falls back to
+debug signing, prints a warning, and Google Play rejects the upload.
+`dart run tool/release_check.dart` catches this.
 
-## Release SHA-1 (required for Google Sign-In on release builds)
+## Build
 
 ```
-BE:EB:94:E9:1B:3A:2D:A9:3E:CC:86:53:E2:52:0B:6C:9A:B8:41:F5
-```
-
-1. Firebase Console → Project settings → Android app `com.petalgrid.game`
-2. Add fingerprint → paste SHA-1 above
-3. Download fresh `google-services.json` → replace `android/app/google-services.json`
-
-## Build signed artifacts
-
-```bash
 cd c:\Puzzle\Puzzle
-flutter clean
 flutter pub get
+dart run tool/release_check.dart
 flutter build appbundle --release
-flutter build apk --release
 ```
 
-Outputs:
-- AAB: `build/app/outputs/bundle/release/app-release.aab`
-- APK: `build/app/outputs/flutter-apk/app-release.apk`
+- AAB for Play: `build/app/outputs/bundle/release/app-release.aab`
+- APK for sideloading: `flutter build apk --release`, output in `build/app/outputs/flutter-apk/`
 
-## Still deferred (owner)
+## SHA-1 fingerprints
 
-- Production AdMob IDs + `adsUseTestIds = false`
-- UMP consent for EEA/UK
-- Play Console Data Safety / content rating / screenshots
-- Legal entity name in Play listing
+Google Sign-In needs each signing key's SHA-1 in Firebase: debug, upload, and Play
+App Signing. See `docs/OWNER_CHECKLIST.md` step 3.
+
+## Platform requirements
+
+| Requirement | Status |
+| --- | --- |
+| Target API 36 (Play requires it from 31 Aug 2026) | Set by Flutter (`flutter.targetSdkVersion`) |
+| Minimum API | 26 |
+| 16 KB memory pages | See `docs/VALIDATION_RESULTS.md` |
+| Edge-to-edge | Flutter handles it; screens use `SafeArea` |
+| Orientation | Portrait on phones. Android 16 ignores the lock on large screens, so layouts are tested in landscape too |

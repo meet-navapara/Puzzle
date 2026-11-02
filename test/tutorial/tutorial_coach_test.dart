@@ -43,7 +43,10 @@ void main() {
       TrayPiece(uid: 'seed', shape: ShapeCatalog.mono, colorIndex: 2),
       TrayPiece(uid: 'wide', shape: ShapeCatalog.square, colorIndex: 0),
     ];
-    final move = TutorialCoach.bestMove(_state(board, tray), preferLineClear: true);
+    final move = TutorialCoach.bestMove(
+      _state(board, tray),
+      preferLineClear: true,
+    );
     expect(move, isNotNull);
     expect(move!.pieceUid, 'seed');
     expect(move.row, 0);
@@ -108,53 +111,54 @@ void main() {
     expect(app.engine.state.phase, GamePhase.playing);
   });
 
-  testWidgets('level 1 guide leaves the board empty, then the player must drag', (
-    tester,
-  ) async {
-    SharedPreferences.setMockInitialValues({});
-    final app = AppState();
-    app.save = await app.localSave.loadOrCreate();
-    app.startLevel(1);
+  testWidgets(
+    'level 1 guide leaves the board empty, then the player must drag',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final app = AppState();
+      app.save = await app.localSave.loadOrCreate();
+      app.startLevel(1);
 
-    await tester.pumpWidget(
-      ChangeNotifierProvider.value(
-        value: app,
-        child: MaterialApp(
-          theme: PetalTheme.dark(),
-          home: const GameplayScreen(),
+      await tester.pumpWidget(
+        ChangeNotifierProvider.value(
+          value: app,
+          child: MaterialApp(
+            theme: PetalTheme.dark(),
+            home: const GameplayScreen(),
+          ),
         ),
-      ),
-    );
-    await tester.pump();
-    for (var i = 0; i < 3; i++) {
-      await tester.tap(find.text('Next'));
+      );
       await tester.pump();
-    }
-    await tester.tap(find.text('Start'));
-    await tester.pump();
-    expect(find.text('Watch the first move'), findsOneWidget);
-    expect(app.engine.state.moveCount, 0);
+      for (var i = 0; i < 3; i++) {
+        await tester.tap(find.text('Next'));
+        await tester.pump();
+      }
+      await tester.tap(find.text('Start'));
+      await tester.pump();
+      expect(find.text('Watch the first move'), findsOneWidget);
+      expect(app.engine.state.moveCount, 0);
 
-    expect(find.byType(GuideLight), findsOneWidget);
-    await tester.pump(const Duration(milliseconds: 1680));
-    await tester.pump();
-    await tester.pump();
-    expect(app.engine.state.moveCount, 0);
-    expect(find.text('Your turn'), findsOneWidget);
-    expect(
-      find.text(
-        'These squares are still empty. Drag the glowing piece onto the glow.',
-      ),
-      findsOneWidget,
-    );
+      expect(find.byType(GuideLight), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 1680));
+      await tester.pump();
+      await tester.pump();
+      expect(app.engine.state.moveCount, 0);
+      expect(find.text('Your turn'), findsOneWidget);
+      expect(
+        find.text(
+          'These squares are still empty. Drag the glowing piece onto the glow.',
+        ),
+        findsOneWidget,
+      );
 
-    app.completeTutorial(1);
-    app.startLevel(1);
-    await tester.pump();
-    await tester.pump();
-    expect(find.text('Step 1 of 4'), findsNothing);
-    expect(app.save!.settings.tutorialLevel1Done, isTrue);
-  });
+      app.completeTutorial(1);
+      app.startLevel(1);
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Step 1 of 4'), findsNothing);
+      expect(app.save!.settings.tutorialLevel1Done, isTrue);
+    },
+  );
 
   testWidgets('home asks a new player to open Classic Garden themselves', (
     tester,

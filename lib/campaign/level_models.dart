@@ -14,8 +14,13 @@ enum LevelObjective {
 enum WorldTheme {
   verdantGrove,
   crystalHarbor,
+  sunpetalDunes,
   emberWorkshop,
+  mistwoodHollow,
+  coralLagoon,
+  frostglassPeaks,
   lunarObservatory,
+  stormrootHighlands,
   celestialConservatory,
 }
 
@@ -31,11 +36,13 @@ class SectionDefinition {
     this.lineTarget,
     this.moveLimit,
     this.comboTarget,
+    this.parMoves,
     this.blockedCells = const [],
     this.prefilledCells = const [],
     this.shapePoolIds = const [],
     this.bloomEnabled = true,
     this.introText = '',
+    this.seedOffset = 0,
   });
 
   final String id;
@@ -47,11 +54,18 @@ class SectionDefinition {
   final int? lineTarget;
   final int? moveLimit;
   final int? comboTarget;
+
+  /// Moves a tidy run should need; drives the star rating. Survival sections
+  /// have a fixed length, so they leave this unset or zero.
+  final int? parMoves;
   final List<(int, int)> blockedCells;
   final List<(int, int, int)> prefilledCells;
   final List<String> shapePoolIds;
   final bool bloomEnabled;
   final String introText;
+
+  /// Selects an alternate piece sequence; see LevelGenerator.seedOverrides.
+  final int seedOffset;
 
   List<PieceShape> get shapePool {
     if (shapePoolIds.isEmpty) return ShapeCatalog.standardPool;
@@ -71,6 +85,7 @@ class SectionDefinition {
     'lineTarget': lineTarget,
     'moveLimit': moveLimit,
     'comboTarget': comboTarget,
+    'par': parMoves,
     'blocked': blockedCells.map((e) => [e.$1, e.$2]).toList(),
     'prefilled': prefilledCells.map((e) => [e.$1, e.$2, e.$3]).toList(),
     'shapes': shapePoolIds,
@@ -86,7 +101,6 @@ class LevelDefinition {
     required this.worldIndex,
     required this.name,
     required this.sections,
-    this.starsThresholds = const [50, 120, 200],
     this.firstClearReward = 10,
     this.challengeHint = '',
   });
@@ -95,18 +109,30 @@ class LevelDefinition {
   final int worldIndex;
   final String name;
   final List<SectionDefinition> sections;
-  final List<int> starsThresholds;
   final int firstClearReward;
   final String challengeHint;
 
   int get sectionCount => sections.length;
+
+  /// Target moves for three stars, counting only sections where moves can vary.
+  int get parMoves => sections.fold(0, (sum, s) {
+    if (s.objective == LevelObjective.surviveMoves) return sum;
+    return sum + (s.parMoves ?? 0);
+  });
+
+  /// Stars for finishing in [moves]. Clearing always earns at least one.
+  int starsForMoves(int moves) {
+    final par = parMoves;
+    if (moves <= par) return 3;
+    if (moves * 2 <= par * 3) return 2;
+    return 1;
+  }
 
   Map<String, dynamic> toJson() => {
     'id': id,
     'world': worldIndex,
     'name': name,
     'sections': sections.map((s) => s.toJson()).toList(),
-    'stars': starsThresholds,
     'reward': firstClearReward,
     'hint': challengeHint,
   };

@@ -125,8 +125,7 @@ class _GameplayScreenState extends State<GameplayScreen>
     if (app.shouldGuideClassic) {
       setState(() {
         _tutorFeedback = '';
-        _tutorMessage =
-            'Drag the glowing piece onto the glowing cells. You make this move.';
+        _tutorMessage = 'Drag the glowing piece onto the glowing cells. You make this move.';
         _refreshTutorMove();
         _tutorPhase = TutorialPhase.guided;
       });
@@ -218,8 +217,7 @@ class _GameplayScreenState extends State<GameplayScreen>
       if (_tutorPhase == TutorialPhase.guided) {
         if (state.mode == GameMode.classic) {
           _tutorPhase = TutorialPhase.explain;
-          _tutorMessage =
-              'You planted it yourself. Fill a whole row or column and it blooms. Classic has no level end — the crown is your best score.';
+          _tutorMessage = 'You planted it yourself. Fill a whole row or column and it blooms. Classic has no level end — the crown is your best score.';
           _tutorMove = null;
           return;
         }
@@ -314,100 +312,108 @@ class _GameplayScreenState extends State<GameplayScreen>
                     const SizedBox(height: PetalSpace.sm),
                     Expanded(
                       child: Center(
-                        child: SizedBox(
-                          width: boardSide,
-                          height: boardSide,
-                          child: ValueListenableBuilder<_GhostPaint?>(
-                            valueListenable: _ghostPaint,
-                            builder: (context, ghost, _) {
-                              final paintPiece = _dragPiece ?? selected;
-                              final showGhost = ghost != null &&
-                                  ghost.target.overBoard &&
-                                  paintPiece != null;
-                              final ghostValid =
-                                  showGhost && ghost.target.valid;
-                              List<int> previewRows = const [];
-                              List<int> previewCols = const [];
-                              if (ghostValid) {
-                                final preview = st.board.previewClears(
-                                  paintPiece.shape,
-                                  ghost.target.row,
-                                  ghost.target.col,
-                                  paintPiece.colorIndex,
-                                );
-                                previewRows = preview.clearedRows;
-                                previewCols = preview.clearedCols;
-                              }
-                              return Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  BoardView(
-                                    boardKey: _boardKey,
-                                    board: st.board,
-                                    ghostShape:
-                                        showGhost ? paintPiece.shape : null,
-                                    ghostRow:
-                                        showGhost ? ghost.target.row : null,
-                                    ghostCol:
-                                        showGhost ? ghost.target.col : null,
-                                    ghostValid: ghostValid,
-                                    ghostColorIndex:
-                                        paintPiece?.colorIndex ?? 0,
-                                    pruneMode: snapshot.bloomPruneMode,
-                                    placePulseCells: _placePulse,
-                                    placeScale: _placeScale,
-                                    clearRows: _clearRows,
-                                    clearCols: _clearCols,
-                                    clearToken: _clearToken,
-                                    clearActive: _clearActive,
-                                    previewClearRows: previewRows,
-                                    previewClearCols: previewCols,
-                                    guideCells: _showGuideCells
-                                        ? _tutorMove!.cells
-                                        : const {},
-                                    guideTravel:
-                                        _tutorPhase == TutorialPhase.demo &&
-                                            _tutorMove != null &&
-                                            !_reducedMotion
-                                        ? _tutorMove!.cells.toList()
-                                        : const [],
-                                    onGuideFinished: _finishGuideDemo,
-                                    reducedMotion: _reducedMotion,
-                                    onClearFxFinished: () {
-                                      if (!mounted) return;
-                                      setState(() {
-                                        _clearActive = false;
-                                        _clearRows = const [];
-                                        _clearCols = const [];
-                                      });
-                                    },
-                                    onCellTap: (r, c) =>
-                                        _onCellTap(app, st, r, c),
-                                  ),
-                                  // Overlay hint — never changes Column height.
-                                  Positioned(
-                                    left: 8,
-                                    right: 8,
-                                    bottom: -2,
-                                    child: IgnorePointer(
-                                      child: AnimatedOpacity(
-                                        duration: PetalMotion.tap,
-                                        opacity:
-                                            (_draggingUid != null &&
-                                                ghost != null &&
-                                                ghost.target.overBoard &&
-                                                !ghost.target.valid)
-                                            ? 1
-                                            : 0,
-                                        child: _InvalidHint(
-                                          color: surfaces.danger,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints.loose(
+                            Size.square(boardSide),
+                          ),
+                          child: AspectRatio(
+                            aspectRatio: 1,
+                            child: ValueListenableBuilder<_GhostPaint?>(
+                              valueListenable: _ghostPaint,
+                              builder: (context, ghost, _) {
+                                final paintPiece = _dragPiece ?? selected;
+                                final showGhost =
+                                    ghost != null &&
+                                    ghost.target.overBoard &&
+                                    paintPiece != null;
+                                final ghostValid =
+                                    showGhost && ghost.target.valid;
+                                List<int> previewRows = const [];
+                                List<int> previewCols = const [];
+                                if (ghostValid) {
+                                  final preview = st.board.previewClears(
+                                    paintPiece.shape,
+                                    ghost.target.row,
+                                    ghost.target.col,
+                                    paintPiece.colorIndex,
+                                  );
+                                  previewRows = preview.clearedRows;
+                                  previewCols = preview.clearedCols;
+                                }
+                                return Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    BoardView(
+                                      boardKey: _boardKey,
+                                      board: st.board,
+                                      ghostShape: showGhost
+                                          ? paintPiece.shape
+                                          : null,
+                                      ghostRow: showGhost
+                                          ? ghost.target.row
+                                          : null,
+                                      ghostCol: showGhost
+                                          ? ghost.target.col
+                                          : null,
+                                      ghostValid: ghostValid,
+                                      ghostColorIndex:
+                                          paintPiece?.colorIndex ?? 0,
+                                      pruneMode: snapshot.bloomPruneMode,
+                                      placePulseCells: _placePulse,
+                                      placeScale: _placeScale,
+                                      clearRows: _clearRows,
+                                      clearCols: _clearCols,
+                                      clearToken: _clearToken,
+                                      clearActive: _clearActive,
+                                      previewClearRows: previewRows,
+                                      previewClearCols: previewCols,
+                                      guideCells: _showGuideCells
+                                          ? _tutorMove!.cells
+                                          : const {},
+                                      guideTravel:
+                                          _tutorPhase == TutorialPhase.demo &&
+                                              _tutorMove != null &&
+                                              !_reducedMotion
+                                          ? _tutorMove!.cells.toList()
+                                          : const [],
+                                      onGuideFinished: _finishGuideDemo,
+                                      reducedMotion: _reducedMotion,
+                                      onClearFxFinished: () {
+                                        if (!mounted) return;
+                                        setState(() {
+                                          _clearActive = false;
+                                          _clearRows = const [];
+                                          _clearCols = const [];
+                                        });
+                                      },
+                                      onCellTap: (r, c) =>
+                                          _onCellTap(app, st, r, c),
+                                    ),
+                                    // Overlay hint — never changes Column height.
+                                    Positioned(
+                                      left: 8,
+                                      right: 8,
+                                      bottom: -2,
+                                      child: IgnorePointer(
+                                        child: AnimatedOpacity(
+                                          duration: PetalMotion.tap,
+                                          opacity:
+                                              (_draggingUid != null &&
+                                                  ghost != null &&
+                                                  ghost.target.overBoard &&
+                                                  !ghost.target.valid)
+                                              ? 1
+                                              : 0,
+                                          child: _InvalidHint(
+                                            color: surfaces.danger,
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                ],
-                              );
-                            },
+                                  ],
+                                );
+                              },
+                            ),
                           ),
                         ),
                       ),
@@ -540,7 +546,7 @@ class _GameplayScreenState extends State<GameplayScreen>
                       : _awaitingFirstDrag
                       ? _tutorMessage
                       : (_tutorMove?.reason ??
-                          'Drag the glowing piece onto the glowing cells.'),
+                            'Drag the glowing piece onto the glowing cells.'),
                   feedback: _tutorFeedback,
                   showHint: _tutorPhase == TutorialPhase.practice,
                   hintOn: _hintOn,
@@ -713,12 +719,11 @@ class _GameplayScreenState extends State<GameplayScreen>
           valueListenable: _fingerGlobal,
           builder: (context, finger, _) {
             if (finger == null) return const SizedBox.shrink();
-            const extent = 96.0;
-            final rows = piece.shape.height;
-            final cols = piece.shape.width;
-            final cell = extent / (rows > cols ? rows : cols);
-            final w = cols * cell;
-            final h = rows * cell;
+            // Same cell size and lift as BoardPlacementMapper, so the piece
+            // floats exactly over the cells the ghost shows it landing on.
+            final cell = _boardCellSize();
+            final w = piece.shape.width * cell;
+            final h = piece.shape.height * cell;
             final lift = cell * BoardPlacementMapper.defaultFingerLiftCells;
             return IgnorePointer(
               child: Stack(
@@ -727,13 +732,13 @@ class _GameplayScreenState extends State<GameplayScreen>
                     left: finger.dx - w / 2,
                     top: finger.dy - h / 2 - lift,
                     child: Opacity(
-                      opacity:
-                          Theme.of(context).brightness == Brightness.light
-                              ? 0.96
-                              : 0.78,
+                      opacity: Theme.of(context).brightness == Brightness.light
+                          ? 0.96
+                          : 0.78,
                       child: PieceVisual(
                         piece: piece,
-                        maxExtent: extent,
+                        maxExtent: w > h ? w : h,
+                        cellSize: cell,
                         bare: true,
                         lifted: true,
                       ),
@@ -747,6 +752,15 @@ class _GameplayScreenState extends State<GameplayScreen>
       },
     );
     Overlay.of(context, rootOverlay: true).insert(_dragOverlay!);
+  }
+
+  /// One board cell in logical pixels, measured like [BoardPlacementMapper].
+  double _boardCellSize() {
+    final box = _boardKey.currentContext?.findRenderObject() as RenderBox?;
+    final size = context.read<AppState>().engine.state.board.size;
+    if (box == null || !box.hasSize || size <= 0) return 32;
+    final usable = box.size.width - BoardPlacementMapper.innerPadding * 2;
+    return usable > 0 ? usable / size : 32;
   }
 
   void _removeDragOverlay() {
@@ -798,7 +812,8 @@ class _GameplayScreenState extends State<GameplayScreen>
       if (_tutorPhase == TutorialPhase.guided ||
           _tutorPhase == TutorialPhase.practice) {
         setState(() {
-          _tutorFeedback = 'That spot does not fit. Try an open group of cells.';
+          _tutorFeedback =
+              'That spot does not fit. Try an open group of cells.';
         });
       }
       _playReject();
@@ -898,6 +913,7 @@ class _PlaySnapshot {
     required this.showingSectionIntro,
     required this.petals,
     required this.advancingSection,
+    required this.rescueInProgress,
   });
 
   factory _PlaySnapshot.from(AppState a) => _PlaySnapshot(
@@ -910,6 +926,7 @@ class _PlaySnapshot {
     showingSectionIntro: a.showingSectionIntro,
     petals: a.save?.campaign.petals ?? 0,
     advancingSection: a.advancingSection,
+    rescueInProgress: a.rescueInProgress,
   );
 
   final GameState state;
@@ -921,6 +938,7 @@ class _PlaySnapshot {
   final bool showingSectionIntro;
   final int petals;
   final bool advancingSection;
+  final bool rescueInProgress;
 
   @override
   bool operator ==(Object other) {
@@ -934,7 +952,8 @@ class _PlaySnapshot {
         other.sectionMaxCombo == sectionMaxCombo &&
         other.showingSectionIntro == showingSectionIntro &&
         other.petals == petals &&
-        other.advancingSection == advancingSection;
+        other.advancingSection == advancingSection &&
+        other.rescueInProgress == rescueInProgress;
   }
 
   @override
@@ -948,6 +967,7 @@ class _PlaySnapshot {
     petals,
     advancingSection,
     statusMessage,
+    rescueInProgress,
   );
 }
 
@@ -1047,8 +1067,8 @@ class _ScoreBoard extends StatelessWidget {
 
     final objectiveChips = <Widget>[];
     if (state.mode == GameMode.campaign && state.levelId != null) {
-      final section =
-          CampaignCatalog.level(state.levelId!).sections[state.sectionIndex];
+      final section = CampaignCatalog.level(state.levelId!)
+          .sections[state.sectionIndex];
       switch (section.objective) {
         case LevelObjective.reachScore:
           objectiveChips.add(
@@ -1066,17 +1086,11 @@ class _ScoreBoard extends StatelessWidget {
           );
         case LevelObjective.surviveMoves:
           objectiveChips.add(
-            _StatChip(
-              label: 'Survive',
-              value: '${state.movesRemaining ?? 0}',
-            ),
+            _StatChip(label: 'Survive', value: '${state.movesRemaining ?? 0}'),
           );
         case LevelObjective.clearBoard:
           objectiveChips.add(
-            _StatChip(
-              label: 'Clear',
-              value: '${state.board.filledCount} left',
-            ),
+            _StatChip(label: 'Clear', value: '${state.board.filledCount} left'),
           );
         case LevelObjective.comboStreak:
           objectiveChips.add(
@@ -1097,8 +1111,7 @@ class _ScoreBoard extends StatelessWidget {
       if (state.combo > 1)
         _StatChip(label: 'Combo', value: 'x${state.combo}', accent: true),
       if (state.movesRemaining != null &&
-          !(state.mode == GameMode.campaign &&
-              state.surviveOnMovesExhausted))
+          !(state.mode == GameMode.campaign && state.surviveOnMovesExhausted))
         _StatChip(label: 'Moves', value: '${state.movesRemaining}'),
       ...objectiveChips,
     ];
@@ -1111,10 +1124,7 @@ class _ScoreBoard extends StatelessWidget {
             children: [
               Icon(Icons.workspace_premium_rounded, color: _bestGold, size: 20),
               const SizedBox(width: 5),
-              Text(
-                '${state.bestScore}',
-                style: PetalText.highScore(context),
-              ),
+              Text('${state.bestScore}', style: PetalText.highScore(context)),
               const Spacer(),
               IconButton(
                 tooltip: 'Pause',
@@ -1132,10 +1142,8 @@ class _ScoreBoard extends StatelessWidget {
           Text(
             '${state.score}',
             textAlign: TextAlign.center,
-            style: PetalText.heroScore(context).copyWith(
-              fontSize: compact ? 38 : 44,
-              color: surfaces.onPanel,
-            ),
+            style: PetalText.heroScore(context)
+                .copyWith(fontSize: compact ? 38 : 44, color: surfaces.onPanel),
           ),
           if (subtitle != null) ...[
             const SizedBox(height: 2),
@@ -1149,13 +1157,17 @@ class _ScoreBoard extends StatelessWidget {
           ],
           if (extras.isNotEmpty) ...[
             SizedBox(height: compact ? 6 : 8),
-            Row(
-              children: [
-                for (var i = 0; i < extras.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 8),
-                  Expanded(child: extras[i]),
+            // Matches the left inset; the 8 on the outer padding suits the icon.
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Row(
+                children: [
+                  for (var i = 0; i < extras.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 8),
+                    Expanded(child: extras[i]),
+                  ],
                 ],
-              ],
+              ),
             ),
           ],
         ],
@@ -1274,9 +1286,9 @@ class _BloomBar extends StatelessWidget {
                 ),
                 child: Text(
                   '+1 · ${AppConfig.bloomChargePetalCost}p',
-                  style: PetalText.caption(context).copyWith(
-                    color: canBuy ? surfaces.accent : surfaces.muted,
-                  ),
+                  style: PetalText.caption(
+                    context,
+                  ).copyWith(color: canBuy ? surfaces.accent : surfaces.muted),
                 ),
               ),
             ElevatedButton(
@@ -1407,27 +1419,53 @@ class _GameOverOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final st = app.engine.state;
+    final surfaces = PetalSurfaces.of(context);
+    final loading = app.rescueInProgress;
     return AppDialogShell(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const AppDialogTitle('Garden Full'),
+          AppDialogTitle(st.outOfMoves ? 'Out of Moves' : 'Garden Full'),
           const SizedBox(height: 12),
           AppStatRow(label: 'Score', value: '${st.score}'),
           AppStatRow(label: 'Best', value: '${st.bestScore}'),
           AppStatRow(label: 'Lines cleared', value: '${st.linesClearedTotal}'),
           const SizedBox(height: 14),
-          if (!st.rescueUsed) ...[
+          if (app.engine.canReviveWithBloom) ...[
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () async {
-                  await app.tryRescue();
-                },
-                icon: const Icon(Icons.ondemand_video_rounded),
-                label: const Text('Watch ad for rescue'),
+                onPressed: loading ? null : app.reviveWithBloom,
+                icon: const Icon(Icons.local_florist_rounded),
+                label: Text('Use Bloom Prune (${st.bloom.charges})'),
               ),
             ),
+            const SizedBox(height: 10),
+          ],
+          if (!st.rescueUsed) ...[
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: loading ? null : app.tryRescue,
+                icon: const Icon(Icons.ondemand_video_rounded),
+                label: Text(
+                  loading
+                      ? 'Loading ad…'
+                      : st.outOfMoves
+                      ? 'Watch ad for ${GameEngine.rescueExtraMoves} more moves'
+                      : 'Watch ad for new pieces',
+                ),
+              ),
+            ),
+            if (app.statusMessage != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                app.statusMessage!,
+                textAlign: TextAlign.center,
+                style: PetalText.caption(context)
+                    .copyWith(color: surfaces.muted),
+              ),
+            ],
             const SizedBox(height: 12),
           ],
           Row(
@@ -1466,33 +1504,54 @@ class _LevelCompleteOverlay extends StatelessWidget {
     final hasMore = st.sectionIndex + 1 < level.sections.length;
     final surfaces = PetalSurfaces.of(context);
     final busy = app.advancingSection;
-    final message = hasMore
-        ? (app.statusMessage == 'Section clear'
-            ? app.statusMessage
-            : 'Section clear')
-        : app.statusMessage;
+    final stars = app.lastRunStars;
+    final nextId = app.levelAfter(level.id);
     return AppDialogShell(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.auto_awesome_rounded,
-            size: 36,
-            color: surfaces.accentSoft,
-          ),
+          if (!hasMore && stars != null)
+            Semantics(
+              label: '$stars of 3 stars',
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (var i = 0; i < 3; i++)
+                    Icon(
+                      Icons.star_rounded,
+                      size: 38,
+                      color: i < stars
+                          ? surfaces.accentSoft
+                          : surfaces.muted.withValues(alpha: 0.28),
+                    ),
+                ],
+              ),
+            )
+          else
+            Icon(
+              Icons.auto_awesome_rounded,
+              size: 36,
+              color: surfaces.accentSoft,
+            ),
           const SizedBox(height: 8),
           AppDialogTitle(hasMore ? 'Section Clear!' : 'Level Complete!'),
           const SizedBox(height: 8),
           AppStatRow(label: 'Section score', value: '${st.score}'),
-          if (!hasMore)
+          if (!hasMore) ...[
             AppStatRow(label: 'Level total', value: '${st.levelRunScore}'),
-          if (message != null) ...[
-            const SizedBox(height: 6),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: PetalText.supporting(context),
-            ),
+            if (level.parMoves > 0)
+              AppStatRow(
+                label: 'Moves (par ${level.parMoves})',
+                value: '${st.levelRunMoves}',
+              ),
+            if (app.statusMessage != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                app.statusMessage!,
+                textAlign: TextAlign.center,
+                style: PetalText.supporting(context),
+              ),
+            ],
           ],
           const SizedBox(height: 14),
           SizedBox(
@@ -1504,12 +1563,23 @@ class _LevelCompleteOverlay extends StatelessWidget {
                       if (hasMore) {
                         app.continueNextSection();
                       } else {
-                        app.finishLevelFromUi();
+                        app.leaveFinishedLevel(playNext: nextId != null);
                       }
                     },
-              child: Text(hasMore ? 'Next section' : 'Continue'),
+              child: Text(
+                hasMore
+                    ? 'Next section'
+                    : nextId != null
+                    ? 'Next level'
+                    : 'Finish',
+              ),
             ),
           ),
+          if (!hasMore && nextId != null)
+            TextButton(
+              onPressed: busy ? null : () => app.leaveFinishedLevel(),
+              child: const Text('Level list'),
+            ),
         ],
       ),
     );

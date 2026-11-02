@@ -50,9 +50,9 @@ class ConnectivityService extends ChangeNotifier {
     _checking = true;
     notifyListeners();
     try {
-      final results = await _connectivity
-          .checkConnectivity()
-          .timeout(AppConfig.connectivityTimeout);
+      final results = await _connectivity.checkConnectivity().timeout(
+        AppConfig.connectivityTimeout,
+      );
       _hasLink = results.any((r) => r != ConnectivityResult.none);
       if (!_hasLink) {
         _failStreak = _offlineAfterFails;

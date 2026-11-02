@@ -64,7 +64,7 @@ class DailyScreen extends StatelessWidget {
               ),
               const SizedBox(height: PetalSpace.sm),
               Text(
-                'Once per UTC day. Reward granted only when the ad SDK confirms completion.',
+                'Once a day. Petals are added when the ad finishes.',
                 textAlign: TextAlign.center,
                 style: PetalText.supporting(context),
               ),

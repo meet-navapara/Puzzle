@@ -1,5 +1,6 @@
 import 'package:block_garden/game/game_engine.dart';
 import 'package:block_garden/state/app_state.dart';
+import 'package:block_garden/ui/game/board_view.dart';
 import 'package:block_garden/ui/game/gameplay_screen.dart';
 import 'package:block_garden/ui/theme/petal_theme.dart';
 import 'package:flutter/material.dart';
@@ -54,6 +55,38 @@ void main() {
     expect(find.text('0'), findsWidgets);
     expect(find.byIcon(Icons.workspace_premium_rounded), findsOneWidget);
     expect(find.byIcon(Icons.settings_rounded), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('board stays square and centred on a short screen', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(360, 560));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    SharedPreferences.setMockInitialValues({});
+    final app = AppState();
+    app.save = await app.localSave.loadOrCreate();
+    app.save = app.save!.copyWith(
+      settings: app.save!.settings.copyWith(
+        tutorialSeen: true,
+        tutorialLevel1Done: true,
+      ),
+    );
+    app.startLevel(1);
+    app.dismissSectionIntro();
+    await tester.pumpWidget(
+      ChangeNotifierProvider.value(
+        value: app,
+        child: MaterialApp(
+          theme: PetalTheme.dark(),
+          home: const GameplayScreen(),
+        ),
+      ),
+    );
+    await tester.pump();
+    final rect = tester.getRect(find.byType(BoardView));
+    expect(rect.center.dx, closeTo(180, 1));
+    expect(rect.width, closeTo(rect.height, 1));
     expect(tester.takeException(), isNull);
   });
 

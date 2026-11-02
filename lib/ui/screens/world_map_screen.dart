@@ -33,7 +33,9 @@ class WorldMapScreen extends StatelessWidget {
                       children: [
                         Text('Campaign', style: PetalText.screenTitle(context)),
                         Text(
-                          'Five worlds · $totalCleared / 50 gardens',
+                          '${CampaignCatalog.worlds.length} worlds · '
+                          '$totalCleared / ${CampaignCatalog.totalLevels} levels · '
+                          '${app.save!.campaign.totalStars} stars',
                           style: PetalText.caption(context),
                         ),
                       ],
@@ -41,7 +43,13 @@ class WorldMapScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
+              ElevatedButton.icon(
+                onPressed: app.playNextLevel,
+                icon: const Icon(Icons.play_arrow_rounded),
+                label: Text('Play level ${app.save!.campaign.nextLevelId}'),
+              ),
+              const SizedBox(height: 14),
               Expanded(
                 child: ListView.separated(
                   itemCount: CampaignCatalog.worlds.length,
@@ -128,6 +136,10 @@ class _WorldCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final surfaces = PetalSurfaces.of(context);
     final dim = !unlocked;
+    // World colours are deep; lift them for text on the dark panels.
+    final readable = Theme.of(context).brightness == Brightness.dark
+        ? Color.lerp(accent, Colors.white, 0.45)!
+        : accent;
 
     return Opacity(
       opacity: dim ? 0.55 : 1,
@@ -157,13 +169,13 @@ class _WorldCard extends StatelessWidget {
                   ? [
                       BoxShadow(
                         color: accent.withValues(
-                          alpha: Theme.of(context).brightness ==
-                                  Brightness.light
+                          alpha:
+                              Theme.of(context).brightness == Brightness.light
                               ? 0.08
                               : 0.14,
                         ),
-                        blurRadius: Theme.of(context).brightness ==
-                                Brightness.light
+                        blurRadius:
+                            Theme.of(context).brightness == Brightness.light
                             ? 10
                             : 14,
                         offset: const Offset(0, 5),
@@ -186,7 +198,7 @@ class _WorldCard extends StatelessWidget {
                     child: Text(
                       '$index',
                       style: PetalText.section(context)
-                          .copyWith(color: accent, fontSize: 18),
+                          .copyWith(color: readable, fontSize: 18),
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -213,7 +225,7 @@ class _WorldCard extends StatelessWidget {
                         Text(
                           progress,
                           style: PetalText.caption(context).copyWith(
-                            color: accent,
+                            color: readable,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -222,7 +234,7 @@ class _WorldCard extends StatelessWidget {
                   ),
                   Icon(
                     unlocked ? Icons.arrow_forward_rounded : Icons.lock_rounded,
-                    color: unlocked ? accent : surfaces.muted,
+                    color: unlocked ? readable : surfaces.muted,
                     size: 22,
                   ),
                 ],
