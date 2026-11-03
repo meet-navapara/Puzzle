@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../game/piece.dart';
+import '../theme/petal_theme.dart';
 import 'piece_visual.dart';
 
 /// Tray of up to three pieces. Uses pan gestures (not [Draggable]) so
@@ -112,10 +113,14 @@ class _TraySlot extends StatelessWidget {
               padding: const EdgeInsets.all(4),
               decoration: highlighted
                   ? BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(PetalRadius.xl + 4),
                       border: Border.all(
-                        color: Theme.of(context).colorScheme.secondary,
-                        width: 2,
+                        color: PetalSurfaces.of(context).gold,
+                        width: 2.4,
+                      ),
+                      boxShadow: PetalShadows.glow(
+                        PetalSurfaces.of(context).gold,
+                        strength: 0.8,
                       ),
                     )
                   : null,

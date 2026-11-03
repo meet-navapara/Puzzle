@@ -1,37 +1,62 @@
-/// Beginner cards shown before the first guided levels.
+/// Which animated mini-garden a lesson card plays.
+enum TutorialDemo { drag, rowBloom, reachGoal, lineGoal, columnBloom }
+
+/// One short lesson card: a title, one or two lines, and a demo.
 class TutorialCard {
-  const TutorialCard({required this.title, required this.body});
+  const TutorialCard({
+    required this.title,
+    required this.body,
+    required this.demo,
+  });
 
   final String title;
   final String body;
+  final TutorialDemo demo;
 }
 
 class TutorialCopy {
   TutorialCopy._();
 
-  static const cards = <TutorialCard>[
+  /// Level 1 teaches the core move and its goal (reach a score).
+  static const level1 = <TutorialCard>[
     TutorialCard(
-      title: 'Welcome to PetalGrid',
-      body: 'PetalGrid is a garden puzzle. You plant colorful pieces on a board and grow a score by filling space.',
+      title: 'Drag a piece',
+      body: 'Drag a piece from the tray onto empty cells. You can also tap it, then tap the board.',
+      demo: TutorialDemo.drag,
     ),
     TutorialCard(
-      title: 'How to play',
-      body: 'Drag a piece from the tray onto empty cells. You can also tap a piece, then tap the board. Pieces cannot overlap or sit on blocked soil.',
+      title: 'Fill a line to bloom',
+      body: 'Fill every open cell in a row and it blooms away. That is where big points come from.',
+      demo: TutorialDemo.rowBloom,
     ),
     TutorialCard(
-      title: 'How to finish',
-      body: 'Fill every open cell in a row or a column and that line blooms — the pieces clear and you score. Level 1 ends when you reach the score goal. Level 2 ends after you bloom two lines.',
-    ),
-    TutorialCard(
-      title: 'A good move',
-      body: 'Straight pieces are easiest for a first bloom. Combos happen when you clear again on the next plant. We will show the first move, then you try the next one.',
+      title: 'Reach the goal',
+      body: 'Level 1 ends when your score reaches the goal. Watch the first move, then you try.',
+      demo: TutorialDemo.reachGoal,
     ),
   ];
 
+  /// Level 2 introduces line goals and columns.
+  static const level2 = <TutorialCard>[
+    TutorialCard(
+      title: 'New goal: bloom 2 lines',
+      body: 'This garden counts lines, not points. Bloom two lines to finish.',
+      demo: TutorialDemo.lineGoal,
+    ),
+    TutorialCard(
+      title: 'Columns count too',
+      body: 'A full column blooms just like a row. Look both ways before you plant.',
+      demo: TutorialDemo.columnBloom,
+    ),
+  ];
+
+  static List<TutorialCard> cardsFor(int levelId) =>
+      levelId == 2 ? level2 : level1;
+
   static String levelSuccess(int levelId) {
     if (levelId == 1) {
-      return 'You learned the basic move: plant a piece, finish a line, and watch it bloom. Level 2 will let you practice with a little less help.';
+      return 'You planted, bloomed a line and reached the goal. Level 2 adds a new kind of goal.';
     }
-    return 'You practiced finding your own blooms. From the next garden onward you can play without the lesson — use Hint only when you want it.';
+    return 'Two lines bloomed. From here on you play on your own. You can replay these lessons from Settings.';
   }
 }

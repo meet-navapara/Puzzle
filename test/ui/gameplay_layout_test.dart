@@ -54,7 +54,7 @@ void main() {
     // Hero scoreboard: current score + high-score crown row.
     expect(find.text('0'), findsWidgets);
     expect(find.byIcon(Icons.workspace_premium_rounded), findsOneWidget);
-    expect(find.byIcon(Icons.settings_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.pause_rounded), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

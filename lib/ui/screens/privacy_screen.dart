@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/app_config.dart';
 import '../../state/app_state.dart';
 import '../theme/petal_theme.dart';
+import '../widgets/petal_button.dart';
 import '../widgets/external_link.dart';
 
 class PrivacyScreen extends StatelessWidget {
@@ -22,7 +23,9 @@ class PrivacyScreen extends StatelessWidget {
           children: [
             Row(
               children: [
-                IconButton(
+                PetalIconButton(
+                  icon: Icons.arrow_back_rounded,
+                  tooltip: 'Back',
                   onPressed: () {
                     final prev = app.previousScreen;
                     if (prev == AppScreen.welcome ||
@@ -32,8 +35,8 @@ class PrivacyScreen extends StatelessWidget {
                       app.go(AppScreen.mainMenu);
                     }
                   },
-                  icon: Icon(Icons.arrow_back_rounded, color: surfaces.onPanel),
                 ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     'Privacy & Legal',

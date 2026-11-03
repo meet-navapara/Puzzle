@@ -18,9 +18,10 @@ class PetalRadius {
   static const double sm = 10;
   static const double md = 14;
   static const double lg = 18;
-  static const double xl = 22;
-  static const double cell = 6;
-  static const double block = 5;
+  static const double xl = 24;
+  static const double xxl = 30;
+  static const double cell = 8;
+  static const double block = 6;
 }
 
 /// Shared motion language — keep gameplay snappy, menus soft.
@@ -64,6 +65,16 @@ class PetalShadows {
       color: shadow.withValues(alpha: light ? 0.18 : 0.4),
       blurRadius: light ? 0 : 2,
       offset: const Offset(0, 1),
+    ),
+  ];
+
+  /// Soft coloured glow under a raised element, e.g. the Play button.
+  static List<BoxShadow> glow(Color color, {double strength = 1}) => [
+    BoxShadow(
+      color: color.withValues(alpha: 0.32 * strength),
+      blurRadius: 18,
+      spreadRadius: -4,
+      offset: const Offset(0, 6),
     ),
   ];
 

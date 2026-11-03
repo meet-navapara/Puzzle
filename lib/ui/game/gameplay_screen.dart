@@ -13,6 +13,7 @@ import '../../game/piece.dart';
 import '../../state/app_state.dart';
 import '../theme/petal_theme.dart';
 import '../widgets/app_dialog.dart';
+import '../widgets/petal_button.dart';
 import 'board_view.dart';
 import 'game_fx.dart';
 import 'piece_visual.dart';
@@ -194,8 +195,10 @@ class _GameplayScreenState extends State<GameplayScreen>
   void _handGuideToPlayer() {
     _tutorPhase = TutorialPhase.guided;
     _awaitingFirstDrag = true;
-    _tutorMessage =
-        'These squares are still empty. Drag the glowing piece onto the glow.';
+    final level = context.read<AppState>().engine.state.levelId;
+    _tutorMessage = level == 2
+        ? 'Drag the glowing piece onto the glow. It moves you toward a full line.'
+        : 'These squares are still empty. Drag the glowing piece onto the glow.';
   }
 
   void _noteTutorAfterPlace() {
@@ -587,11 +590,13 @@ class _GameplayScreenState extends State<GameplayScreen>
                   phase: _tutorPhase,
                   cardIndex: _tutorCard,
                   levelId: st.levelId ?? 1,
+                  reducedMotion: _reducedMotion,
                   onBack: () => setState(() {
                     if (_tutorCard > 0) _tutorCard--;
                   }),
                   onNext: () {
-                    if (_tutorCard < TutorialCopy.cards.length - 1) {
+                    if (_tutorCard <
+                        TutorialCopy.cardsFor(st.levelId ?? 1).length - 1) {
                       setState(() => _tutorCard++);
                     } else {
                       _playTutorDemo();
@@ -980,35 +985,36 @@ class _CompactTutorialTip extends StatelessWidget {
     final surfaces = PetalSurfaces.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-      child: Material(
-        color: surfaces.panel,
-        borderRadius: BorderRadius.circular(PetalRadius.sm),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          child: Row(
-            children: [
-              Icon(Icons.touch_app_rounded, size: 18, color: surfaces.accent),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Drag a piece onto open cells',
-                  style: PetalText.caption(context)
-                      .copyWith(color: surfaces.onPanel),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 2, 4, 2),
+        decoration: BoxDecoration(
+          color: surfaces.panel.withValues(alpha: 0.85),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: surfaces.panelBorder),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.touch_app_rounded, size: 18, color: surfaces.accent),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Drag a piece onto open cells',
+                style: PetalText.caption(context)
+                    .copyWith(color: surfaces.onPanel),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              TextButton(
-                onPressed: onDismiss,
-                style: TextButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  minimumSize: const Size(0, 32),
-                ),
-                child: Text('Got it', style: PetalText.caption(context)),
+            ),
+            TextButton(
+              onPressed: onDismiss,
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                minimumSize: const Size(0, 30),
               ),
-            ],
-          ),
+              child: Text('Got it', style: PetalText.accent(context)),
+            ),
+          ],
         ),
       ),
     );
@@ -1022,23 +1028,34 @@ class _InvalidHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IgnorePointer(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          'No fit here',
-          style: PetalText.caption(context)
-              .copyWith(color: color, fontWeight: FontWeight.w700),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          decoration: BoxDecoration(
+            color: PetalSurfaces.of(context).panel.withValues(alpha: 0.92),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: color.withValues(alpha: 0.7)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.block_rounded, size: 14, color: color),
+              const SizedBox(width: 6),
+              Text(
+                'No fit here',
+                style: PetalText.caption(context)
+                    .copyWith(color: color, fontWeight: FontWeight.w800),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-/// Clean scoreboard: crown + best (left), pause (right), giant centered score.
+/// Best score (left), live score and level (centre), pause (right), then
+/// objective chips with progress underneath.
 class _ScoreBoard extends StatelessWidget {
   const _ScoreBoard({
     required this.state,
@@ -1054,7 +1071,8 @@ class _ScoreBoard extends StatelessWidget {
   final VoidCallback onPause;
   final bool compact;
 
-  static const Color _bestGold = Color(0xFFF5C542);
+  static double _ratio(num value, num? target) =>
+      target == null || target <= 0 ? 0 : (value / target).clamp(0.0, 1.0);
 
   @override
   Widget build(BuildContext context) {
@@ -1063,6 +1081,8 @@ class _ScoreBoard extends StatelessWidget {
     if (state.mode == GameMode.campaign && state.levelId != null) {
       final level = CampaignCatalog.level(state.levelId!);
       subtitle = 'Lv ${level.id} · ${level.sections[state.sectionIndex].name}';
+    } else if (state.mode == GameMode.classic) {
+      subtitle = 'Classic Garden';
     }
 
     final objectiveChips = <Widget>[];
@@ -1073,101 +1093,158 @@ class _ScoreBoard extends StatelessWidget {
         case LevelObjective.reachScore:
           objectiveChips.add(
             _StatChip(
+              icon: Icons.flag_rounded,
               label: 'Goal',
               value: '${state.score}/${section.scoreTarget ?? '?'}',
+              progress: _ratio(state.score, section.scoreTarget),
             ),
           );
         case LevelObjective.clearLines:
           objectiveChips.add(
             _StatChip(
+              icon: Icons.view_week_rounded,
               label: 'Lines',
               value: '$linesCleared/${section.lineTarget ?? '?'}',
+              progress: _ratio(linesCleared, section.lineTarget),
             ),
           );
         case LevelObjective.surviveMoves:
           objectiveChips.add(
-            _StatChip(label: 'Survive', value: '${state.movesRemaining ?? 0}'),
+            _StatChip(
+              icon: Icons.shield_rounded,
+              label: 'Survive',
+              value: '${state.movesRemaining ?? 0}',
+            ),
           );
         case LevelObjective.clearBoard:
           objectiveChips.add(
-            _StatChip(label: 'Clear', value: '${state.board.filledCount} left'),
+            _StatChip(
+              icon: Icons.cleaning_services_rounded,
+              label: 'Clear',
+              value: '${state.board.filledCount} left',
+            ),
           );
         case LevelObjective.comboStreak:
           objectiveChips.add(
             _StatChip(
+              icon: Icons.bolt_rounded,
               label: 'Combo',
               value: '$maxCombo/${section.comboTarget ?? '?'}',
+              progress: _ratio(maxCombo, section.comboTarget),
               accent: true,
             ),
           );
       }
     } else if (state.scoreTarget != null) {
       objectiveChips.add(
-        _StatChip(label: 'Goal', value: '${state.scoreTarget}'),
+        _StatChip(
+          icon: Icons.flag_rounded,
+          label: 'Goal',
+          value: '${state.scoreTarget}',
+        ),
       );
     }
 
     final extras = <Widget>[
       if (state.combo > 1)
-        _StatChip(label: 'Combo', value: 'x${state.combo}', accent: true),
+        _StatChip(
+          icon: Icons.bolt_rounded,
+          label: 'Combo',
+          value: 'x${state.combo}',
+          accent: true,
+        ),
       if (state.movesRemaining != null &&
           !(state.mode == GameMode.campaign && state.surviveOnMovesExhausted))
-        _StatChip(label: 'Moves', value: '${state.movesRemaining}'),
+        _StatChip(
+          icon: Icons.touch_app_rounded,
+          label: 'Moves',
+          value: '${state.movesRemaining}',
+        ),
       ...objectiveChips,
     ];
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(16, compact ? 2 : 4, 8, 0),
+      padding: EdgeInsets.fromLTRB(14, compact ? 2 : 6, 14, 0),
       child: Column(
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Icon(Icons.workspace_premium_rounded, color: _bestGold, size: 20),
-              const SizedBox(width: 5),
-              Text('${state.bestScore}', style: PetalText.highScore(context)),
-              const Spacer(),
-              IconButton(
-                tooltip: 'Pause',
-                onPressed: onPause,
-                visualDensity: VisualDensity.compact,
-                icon: Icon(
-                  Icons.settings_rounded,
-                  color: surfaces.onPanel.withValues(alpha: 0.85),
-                  size: 26,
+              Expanded(
+                flex: 2,
+                // Shrinks rather than overflows on very narrow phones.
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: PetalChip(
+                    icon: Icons.workspace_premium_rounded,
+                    value: '${state.bestScore}',
+                    color: surfaces.gold,
+                    label: 'best score',
+                  ),
+                ),
+              ),
+              // Fills its slot so the score is centred and pause sits at the edge;
+              // long level names ellipsize instead of pushing the row wide.
+              Expanded(
+                flex: 3,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AnimatedSwitcher(
+                      duration: PetalMotion.tap,
+                      transitionBuilder: (child, a) =>
+                          ScaleTransition(scale: a, child: child),
+                      child: Text(
+                        '${state.score}',
+                        key: ValueKey(state.score),
+                        textAlign: TextAlign.center,
+                        style: PetalText.heroScore(context).copyWith(
+                          fontSize: compact ? 36 : 42,
+                          color: surfaces.onPanel,
+                          shadows: [
+                            Shadow(
+                              color: surfaces.glowA.withValues(alpha: 0.35),
+                              blurRadius: 18,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (subtitle != null)
+                      Text(
+                        subtitle,
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: PetalText.caption(context),
+                      ),
+                  ],
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: PetalIconButton(
+                    icon: Icons.pause_rounded,
+                    tooltip: 'Pause',
+                    onPressed: onPause,
+                    size: 42,
+                  ),
                 ),
               ),
             ],
           ),
-          SizedBox(height: compact ? 2 : 4),
-          Text(
-            '${state.score}',
-            textAlign: TextAlign.center,
-            style: PetalText.heroScore(context)
-                .copyWith(fontSize: compact ? 38 : 44, color: surfaces.onPanel),
-          ),
-          if (subtitle != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: PetalText.caption(context),
-            ),
-          ],
           if (extras.isNotEmpty) ...[
-            SizedBox(height: compact ? 6 : 8),
-            // Matches the left inset; the 8 on the outer padding suits the icon.
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Row(
-                children: [
-                  for (var i = 0; i < extras.length; i++) ...[
-                    if (i > 0) const SizedBox(width: 8),
-                    Expanded(child: extras[i]),
-                  ],
+            SizedBox(height: compact ? 6 : 10),
+            Row(
+              children: [
+                for (var i = 0; i < extras.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 8),
+                  Expanded(child: extras[i]),
                 ],
-              ),
+              ],
             ),
           ],
         ],
@@ -1178,41 +1255,134 @@ class _ScoreBoard extends StatelessWidget {
 
 class _StatChip extends StatelessWidget {
   const _StatChip({
+    required this.icon,
     required this.label,
     required this.value,
+    this.progress,
     this.accent = false,
   });
+  final IconData icon;
   final String label;
   final String value;
+
+  /// 0..1 toward the goal; null hides the bar.
+  final double? progress;
   final bool accent;
 
   @override
   Widget build(BuildContext context) {
     final surfaces = PetalSurfaces.of(context);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: accent
-            ? surfaces.accentSoft.withValues(alpha: 0.22)
-            : surfaces.hudChip,
-        borderRadius: BorderRadius.circular(PetalRadius.md),
-        border: Border.all(
-          color: accent ? surfaces.accentSoft : surfaces.panelBorder,
+    final tone = accent ? surfaces.accentSoft : surfaces.accent;
+    return Semantics(
+      label: '$label $value',
+      excludeSemantics: true,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(10, 7, 12, 7),
+        decoration: BoxDecoration(
+          color: accent
+              ? surfaces.accentSoft.withValues(alpha: 0.16)
+              : surfaces.hudChip.withValues(alpha: 0.85),
+          borderRadius: BorderRadius.circular(PetalRadius.lg),
+          border: Border.all(
+            color: accent
+                ? surfaces.accentSoft.withValues(alpha: 0.8)
+                : surfaces.panelBorder.withValues(alpha: 0.8),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: tone.withValues(alpha: 0.18),
+              ),
+              child: Icon(icon, size: 16, color: tone),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    label.toUpperCase(),
+                    style: PetalText.scoreLabel(context),
+                    maxLines: 1,
+                  ),
+                  Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: PetalText.score(context).copyWith(
+                      color: accent ? surfaces.accentSoft : surfaces.onPanel,
+                    ),
+                  ),
+                  if (progress != null) ...[
+                    const SizedBox(height: 4),
+                    _GlowBar(value: progress!, color: tone, height: 4),
+                  ],
+                ],
+              ),
+            ),
+          ],
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(label, style: PetalText.scoreLabel(context)),
-          Text(
-            value,
-            style: PetalText.score(
-              context,
-            ).copyWith(color: accent ? surfaces.accentSoft : surfaces.onPanel),
-          ),
-        ],
+    );
+  }
+}
+
+/// Rounded progress bar with a gradient fill that eases to new values.
+class _GlowBar extends StatelessWidget {
+  const _GlowBar({
+    required this.value,
+    required this.color,
+    this.end,
+    this.height = 6,
+  });
+
+  final double value;
+  final Color color;
+  final Color? end;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final surfaces = PetalSurfaces.of(context);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(height),
+      child: SizedBox(
+        height: height,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: ColoredBox(
+                color: surfaces.emptyCell.withValues(alpha: 0.9),
+              ),
+            ),
+            TweenAnimationBuilder<double>(
+              tween: Tween(end: value.clamp(0.0, 1.0)),
+              duration: PetalMotion.screen,
+              curve: PetalMotion.snappy,
+              builder: (context, v, _) => FractionallySizedBox(
+                widthFactor: v,
+                heightFactor: 1,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        color,
+                        end ?? Color.lerp(color, Colors.white, 0.3)!,
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1243,34 +1413,70 @@ class _BloomBar extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: const EdgeInsets.fromLTRB(8, 7, 8, 7),
         decoration: BoxDecoration(
-          color: surfaces.panel,
-          borderRadius: BorderRadius.circular(PetalRadius.md),
-          border: Border.all(color: surfaces.panelBorder),
+          color: surfaces.panel.withValues(alpha: 0.85),
+          borderRadius: BorderRadius.circular(PetalRadius.xl),
+          border: Border.all(
+            color: active ? surfaces.accentSoft : surfaces.panelBorder,
+            width: active ? 1.6 : 1,
+          ),
         ),
         child: Row(
           children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: surfaces.accentSoft.withValues(alpha: 0.18),
+              ),
+              child: Icon(
+                Icons.local_florist_rounded,
+                size: 19,
+                color: surfaces.accentSoft,
+              ),
+            ),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    'Bloom ${bloom.charges}/${bloom.maxCharges}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: PetalText.accent(context),
-                  ),
-                  const SizedBox(height: 4),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: LinearProgressIndicator(
-                      value: progress.clamp(0.0, 1.0),
-                      minHeight: 6,
-                      backgroundColor: surfaces.emptyCell,
-                      color: surfaces.accentSoft,
+                  LayoutBuilder(
+                    builder: (context, box) => Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            'Bloom ${bloom.charges}/${bloom.maxCharges}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: PetalText.accent(context)
+                                .copyWith(color: surfaces.onPanel),
+                          ),
+                        ),
+                        // The dots repeat the count, so they go first when tight.
+                        if (box.maxWidth >= 120) const SizedBox(width: 6),
+                        if (box.maxWidth >= 120)
+                          for (var i = 0; i < bloom.maxCharges; i++)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 3),
+                              child: Icon(
+                                Icons.circle,
+                                size: 7,
+                                color: i < bloom.charges
+                                    ? surfaces.accentSoft
+                                    : surfaces.muted.withValues(alpha: 0.35),
+                              ),
+                            ),
+                      ],
                     ),
+                  ),
+                  const SizedBox(height: 5),
+                  _GlowBar(
+                    value: progress,
+                    color: surfaces.accentSoft,
+                    end: surfaces.gold,
                   ),
                 ],
               ),
@@ -1286,27 +1492,37 @@ class _BloomBar extends StatelessWidget {
                 ),
                 child: Text(
                   '+1 · ${AppConfig.bloomChargePetalCost}p',
-                  style: PetalText.caption(
-                    context,
-                  ).copyWith(color: canBuy ? surfaces.accent : surfaces.muted),
+                  style: PetalText.caption(context)
+                      .copyWith(color: canBuy ? surfaces.gold : surfaces.muted),
                 ),
               ),
-            ElevatedButton(
-              onPressed: can ? onToggle : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: active ? surfaces.accentSoft : surfaces.accent,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
+            PressScale(
+              onTap: can ? onToggle : null,
+              child: AnimatedContainer(
+                duration: PetalMotion.tap,
+                height: 38,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(999),
+                  color: can ? null : surfaces.hudChip,
+                  gradient: can
+                      ? LinearGradient(
+                          colors: active
+                              ? [surfaces.accentSoft, surfaces.gold]
+                              : [surfaces.ctaStart, surfaces.ctaEnd],
+                        )
+                      : null,
+                  boxShadow: can
+                      ? PetalShadows.glow(surfaces.ctaStart, strength: 0.5)
+                      : null,
                 ),
-                minimumSize: const Size(0, 36),
-                visualDensity: VisualDensity.compact,
-              ),
-              child: Text(
-                active ? 'Pick' : 'Prune',
-                style: PetalText.button(context).copyWith(
-                  fontSize: 13,
-                  color: can ? surfaces.onAccent : surfaces.muted,
+                child: Text(
+                  active ? 'Pick' : 'Prune',
+                  style: PetalText.button(context).copyWith(
+                    fontSize: 13.5,
+                    color: can ? surfaces.onCta : surfaces.muted,
+                  ),
                 ),
               ),
             ),
@@ -1323,27 +1539,35 @@ class _PauseOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final st = app.engine.state;
+    final where = st.mode == GameMode.campaign && st.levelId != null
+        ? 'Level ${st.levelId} · score ${st.score}'
+        : 'Score ${st.score}';
     return AppDialogShell(
+      badge: Icons.pause_rounded,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           const AppDialogTitle('Paused'),
-          const SizedBox(height: 20),
+          const SizedBox(height: 4),
+          Text(where, style: PetalText.supporting(context)),
+          const SizedBox(height: 18),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
+              Expanded(
+                child: AppIconAction(
+                  icon: Icons.refresh_rounded,
+                  label: 'Restart',
+                  onPressed: () => _confirmRestart(context, app),
+                ),
+              ),
               Expanded(
                 child: AppIconAction(
                   icon: Icons.play_arrow_rounded,
                   label: 'Resume',
                   primary: true,
                   onPressed: app.resumeGame,
-                ),
-              ),
-              Expanded(
-                child: AppIconAction(
-                  icon: Icons.refresh_rounded,
-                  label: 'Restart',
-                  onPressed: () => _confirmRestart(context, app),
                 ),
               ),
               Expanded(
@@ -1370,15 +1594,13 @@ class _PauseOverlay extends StatelessWidget {
           style: PetalText.body(ctx),
         ),
         actions: [
-          IconButton(
-            tooltip: 'Cancel',
+          TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            icon: const Icon(Icons.close_rounded),
+            child: const Text('Cancel'),
           ),
-          IconButton(
-            tooltip: 'Restart',
+          ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            icon: const Icon(Icons.refresh_rounded),
+            child: const Text('Restart'),
           ),
         ],
       ),
@@ -1394,12 +1616,12 @@ class _ConnectionOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final surfaces = PetalSurfaces.of(context);
     return AppDialogShell(
+      badge: Icons.wifi_off_rounded,
+      badgeColor: surfaces.accentSoft,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.wifi_off_rounded, size: 40, color: surfaces.accentSoft),
-          const SizedBox(height: 10),
-          Text('Connection lost', style: PetalText.screenTitle(context)),
+          const AppDialogTitle('Connection lost'),
           const SizedBox(height: 8),
           Text(
             'Your garden is paused. Progress is kept. Resume when internet returns.',
@@ -1422,23 +1644,32 @@ class _GameOverOverlay extends StatelessWidget {
     final surfaces = PetalSurfaces.of(context);
     final loading = app.rescueInProgress;
     return AppDialogShell(
+      badge: st.outOfMoves
+          ? Icons.hourglass_bottom_rounded
+          : Icons.grid_on_rounded,
+      badgeColor: surfaces.accentSoft,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           AppDialogTitle(st.outOfMoves ? 'Out of Moves' : 'Garden Full'),
-          const SizedBox(height: 12),
-          AppStatRow(label: 'Score', value: '${st.score}'),
+          const SizedBox(height: 4),
+          Text(
+            st.outOfMoves
+                ? 'So close. Keep going or try again.'
+                : 'No piece fits right now.',
+            textAlign: TextAlign.center,
+            style: PetalText.supporting(context),
+          ),
+          const SizedBox(height: 14),
+          AppStatRow(label: 'Score', value: '${st.score}', highlight: true),
           AppStatRow(label: 'Best', value: '${st.bestScore}'),
           AppStatRow(label: 'Lines cleared', value: '${st.linesClearedTotal}'),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           if (app.engine.canReviveWithBloom) ...[
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: loading ? null : app.reviveWithBloom,
-                icon: const Icon(Icons.local_florist_rounded),
-                label: Text('Use Bloom Prune (${st.bloom.charges})'),
-              ),
+            PetalButton(
+              label: 'Use Bloom Prune (${st.bloom.charges})',
+              icon: Icons.local_florist_rounded,
+              onPressed: loading ? null : app.reviveWithBloom,
             ),
             const SizedBox(height: 10),
           ],
@@ -1469,6 +1700,7 @@ class _GameOverOverlay extends StatelessWidget {
             const SizedBox(height: 12),
           ],
           Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Expanded(
                 child: AppIconAction(
@@ -1506,80 +1738,94 @@ class _LevelCompleteOverlay extends StatelessWidget {
     final busy = app.advancingSection;
     final stars = app.lastRunStars;
     final nextId = app.levelAfter(level.id);
+    final reduced =
+        (app.save?.settings.reducedEffects ?? false) ||
+        MediaQuery.of(context).disableAnimations;
+    final showStars = !hasMore && stars != null;
     return AppDialogShell(
+      badge: showStars ? null : Icons.auto_awesome_rounded,
+      badgeColor: surfaces.gold,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (!hasMore && stars != null)
-            Semantics(
-              label: '$stars of 3 stars',
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (var i = 0; i < 3; i++)
-                    Icon(
-                      Icons.star_rounded,
-                      size: 38,
-                      color: i < stars
-                          ? surfaces.accentSoft
-                          : surfaces.muted.withValues(alpha: 0.28),
-                    ),
-                ],
-              ),
-            )
-          else
-            Icon(
-              Icons.auto_awesome_rounded,
-              size: 36,
-              color: surfaces.accentSoft,
-            ),
-          const SizedBox(height: 8),
+          if (showStars) ...[
+            StarBurst(stars: stars, reduced: reduced),
+            const SizedBox(height: 10),
+          ],
           AppDialogTitle(hasMore ? 'Section Clear!' : 'Level Complete!'),
-          const SizedBox(height: 8),
-          AppStatRow(label: 'Section score', value: '${st.score}'),
+          const SizedBox(height: 2),
+          Text(
+            'Level ${level.id} · ${level.name}',
+            textAlign: TextAlign.center,
+            style: PetalText.supporting(context),
+          ),
+          const SizedBox(height: 14),
+          AppStatRow(
+            label: 'Section score',
+            value: '${st.score}',
+            highlight: hasMore,
+          ),
           if (!hasMore) ...[
-            AppStatRow(label: 'Level total', value: '${st.levelRunScore}'),
+            AppStatRow(
+              label: 'Level total',
+              value: '${st.levelRunScore}',
+              highlight: true,
+            ),
             if (level.parMoves > 0)
               AppStatRow(
                 label: 'Moves (par ${level.parMoves})',
                 value: '${st.levelRunMoves}',
               ),
             if (app.statusMessage != null) ...[
-              const SizedBox(height: 6),
-              Text(
-                app.statusMessage!,
-                textAlign: TextAlign.center,
-                style: PetalText.supporting(context),
+              const SizedBox(height: 10),
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: surfaces.gold.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: surfaces.gold.withValues(alpha: 0.6),
+                    ),
+                  ),
+                  child: Text(
+                    app.statusMessage!,
+                    textAlign: TextAlign.center,
+                    style: PetalText.accent(context)
+                        .copyWith(color: surfaces.gold),
+                  ),
+                ),
               ),
             ],
           ],
-          const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: busy
-                  ? null
-                  : () {
-                      if (hasMore) {
-                        app.continueNextSection();
-                      } else {
-                        app.leaveFinishedLevel(playNext: nextId != null);
-                      }
-                    },
-              child: Text(
-                hasMore
-                    ? 'Next section'
-                    : nextId != null
-                    ? 'Next level'
-                    : 'Finish',
-              ),
-            ),
+          const SizedBox(height: 18),
+          PetalButton(
+            label: hasMore
+                ? 'Next section'
+                : nextId != null
+                ? 'Next level'
+                : 'Finish',
+            icon: Icons.arrow_forward_rounded,
+            onPressed: busy
+                ? null
+                : () {
+                    if (hasMore) {
+                      app.continueNextSection();
+                    } else {
+                      app.leaveFinishedLevel(playNext: nextId != null);
+                    }
+                  },
           ),
-          if (!hasMore && nextId != null)
+          if (!hasMore && nextId != null) ...[
+            const SizedBox(height: 4),
             TextButton(
               onPressed: busy ? null : () => app.leaveFinishedLevel(),
               child: const Text('Level list'),
             ),
+          ],
         ],
       ),
     );
@@ -1594,6 +1840,8 @@ class _SectionIntroOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppDialogShell(
+      badge: Icons.tips_and_updates_rounded,
+      badgeColor: PetalSurfaces.of(context).gold,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1602,16 +1850,10 @@ class _SectionIntroOverlay extends StatelessWidget {
           Text(
             text,
             textAlign: TextAlign.center,
-            style: PetalText.body(context),
+            style: PetalText.body(context).copyWith(height: 1.45),
           ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: onDismiss,
-              child: const Text('Got it'),
-            ),
-          ),
+          const SizedBox(height: 18),
+          PetalButton(label: 'Got it', onPressed: onDismiss),
         ],
       ),
     );

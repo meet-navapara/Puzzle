@@ -16,7 +16,8 @@ class GuideLight extends StatefulWidget {
   final VoidCallback onFinished;
 
   static const duration = Duration(milliseconds: 1680);
-  static const copper = Color(0xFFE0975C);
+  // Tutorial gold, matching the coach banner and the highlighted tray piece.
+  static const copper = Color(0xFFFFC94D);
   static const ivory = Color(0xFFFFF6EA);
 
   @override

@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 
 import '../../campaign/campaign_catalog.dart';
 import '../../state/app_state.dart';
+import '../game/block_material.dart';
 import '../theme/petal_theme.dart';
+import '../widgets/petal_button.dart';
 
 class WorldMapScreen extends StatelessWidget {
   const WorldMapScreen({super.key});
@@ -22,8 +24,9 @@ class WorldMapScreen extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  _RoundIconButton(
+                  PetalIconButton(
                     icon: Icons.arrow_back_rounded,
+                    tooltip: 'Back',
                     onPressed: () => app.go(AppScreen.mainMenu),
                   ),
                   const SizedBox(width: 12),
@@ -44,10 +47,10 @@ class WorldMapScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 14),
-              ElevatedButton.icon(
+              PetalButton(
+                label: 'Play level ${app.save!.campaign.nextLevelId}',
+                icon: Icons.play_arrow_rounded,
                 onPressed: app.playNextLevel,
-                icon: const Icon(Icons.play_arrow_rounded),
-                label: Text('Play level ${app.save!.campaign.nextLevelId}'),
               ),
               const SizedBox(height: 14),
               Expanded(
@@ -72,6 +75,7 @@ class WorldMapScreen extends StatelessWidget {
                       title: world.name,
                       subtitle: world.subtitle,
                       progress: '$done / ${world.levelIds.length} cleared',
+                      ratio: done / world.levelIds.length,
                       accent: accent,
                       unlocked: unlocked,
                       emphasized: emphasized,
@@ -88,35 +92,13 @@ class WorldMapScreen extends StatelessWidget {
   }
 }
 
-class _RoundIconButton extends StatelessWidget {
-  const _RoundIconButton({required this.icon, required this.onPressed});
-  final IconData icon;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final surfaces = PetalSurfaces.of(context);
-    return Material(
-      color: surfaces.panel.withValues(alpha: 0.7),
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onPressed,
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Icon(icon, size: 22, color: surfaces.onPanel),
-        ),
-      ),
-    );
-  }
-}
-
 class _WorldCard extends StatelessWidget {
   const _WorldCard({
     required this.index,
     required this.title,
     required this.subtitle,
     required this.progress,
+    required this.ratio,
     required this.accent,
     required this.unlocked,
     required this.emphasized,
@@ -127,6 +109,7 @@ class _WorldCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final String progress;
+  final double ratio;
   final Color accent;
   final bool unlocked;
   final bool emphasized;
@@ -135,113 +118,124 @@ class _WorldCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final surfaces = PetalSurfaces.of(context);
-    final dim = !unlocked;
+    final light = Theme.of(context).brightness == Brightness.light;
     // World colours are deep; lift them for text on the dark panels.
-    final readable = Theme.of(context).brightness == Brightness.dark
-        ? Color.lerp(accent, Colors.white, 0.45)!
-        : accent;
+    final readable = light ? accent : Color.lerp(accent, Colors.white, 0.45)!;
+    final finished = ratio >= 1;
 
-    return Opacity(
-      opacity: dim ? 0.55 : 1,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(PetalRadius.xl),
-          onTap: onTap,
-          child: Ink(
-            height: emphasized ? 100 : 92,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(PetalRadius.xl),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  accent.withValues(alpha: emphasized ? 0.26 : 0.14),
-                  surfaces.panel,
-                  surfaces.panel,
-                ],
-              ),
-              border: Border.all(
-                color: accent.withValues(alpha: unlocked ? 0.45 : 0.22),
-                width: emphasized ? 1.3 : 1.1,
-              ),
-              boxShadow: unlocked
-                  ? [
-                      BoxShadow(
-                        color: accent.withValues(
-                          alpha:
-                              Theme.of(context).brightness == Brightness.light
-                              ? 0.08
-                              : 0.14,
-                        ),
-                        blurRadius:
-                            Theme.of(context).brightness == Brightness.light
-                            ? 10
-                            : 14,
-                        offset: const Offset(0, 5),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: accent.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      '$index',
-                      style: PetalText.section(context)
-                          .copyWith(color: readable, fontSize: 18),
-                    ),
+    final medal = Container(
+      width: 54,
+      height: 54,
+      alignment: Alignment.center,
+      decoration: unlocked
+          ? BlockMaterial.filled(
+              color: Color.lerp(accent, surfaces.panel, light ? 0.05 : 0.2)!,
+              surfaces: surfaces,
+              isLight: light,
+              radius: 17,
+            )
+          : BlockMaterial.empty(surfaces: surfaces, isLight: light, radius: 17),
+      foregroundDecoration: unlocked ? BlockMaterial.gloss(17) : null,
+      child: unlocked
+          ? Text(
+              '$index',
+              style: PetalText.section(context)
+                  .copyWith(color: Colors.white, fontSize: 20),
+            )
+          : Icon(Icons.lock_rounded, color: surfaces.muted, size: 20),
+    );
+
+    final card = Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(PetalRadius.xl),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color.lerp(
+              surfaces.panel,
+              accent,
+              unlocked ? (emphasized ? 0.24 : 0.14) : 0.04,
+            )!,
+            surfaces.panel.withValues(alpha: light ? 1 : 0.9),
+          ],
+        ),
+        border: Border.all(
+          color: emphasized
+              ? readable.withValues(alpha: 0.8)
+              : accent.withValues(alpha: unlocked ? 0.4 : 0.18),
+          width: emphasized ? 1.8 : 1.1,
+        ),
+        boxShadow: emphasized ? PetalShadows.glow(accent, strength: 0.6) : null,
+      ),
+      padding: EdgeInsets.fromLTRB(
+        14,
+        emphasized ? 16 : 13,
+        14,
+        emphasized ? 16 : 13,
+      ),
+      child: Row(
+        children: [
+          medal,
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: PetalText.section(context).copyWith(fontSize: 16.5),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: PetalText.supporting(context),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  progress,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: PetalText.caption(context)
+                      .copyWith(color: readable, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 5),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: ratio.clamp(0.0, 1.0),
+                    minHeight: 5,
+                    color: readable,
+                    backgroundColor: surfaces.emptyCell,
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: PetalText.section(context)
-                              .copyWith(fontSize: 16),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          subtitle,
-                          style: PetalText.supporting(context),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          progress,
-                          style: PetalText.caption(context).copyWith(
-                            color: readable,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    unlocked ? Icons.arrow_forward_rounded : Icons.lock_rounded,
-                    color: unlocked ? readable : surfaces.muted,
-                    size: 22,
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-        ),
+          const SizedBox(width: 10),
+          Icon(
+            !unlocked
+                ? Icons.lock_rounded
+                : finished
+                ? Icons.check_circle_rounded
+                : Icons.chevron_right_rounded,
+            color: unlocked ? readable : surfaces.muted,
+            size: finished ? 24 : 26,
+          ),
+        ],
+      ),
+    );
+
+    return Opacity(
+      opacity: unlocked ? 1 : 0.6,
+      child: Semantics(
+        button: true,
+        enabled: unlocked,
+        child: PressScale(onTap: onTap, scale: 0.98, child: card),
       ),
     );
   }

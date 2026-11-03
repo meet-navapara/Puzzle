@@ -77,7 +77,7 @@ class _RootNavigator extends StatelessWidget {
           maybeExitApp();
         }
       },
-      child: _screenFor(screen),
+      child: _ScreenEntrance(key: ValueKey(screen), child: _screenFor(screen)),
     );
   }
 
@@ -109,5 +109,34 @@ class _RootNavigator extends StatelessWidget {
       case AppScreen.campaignVictory:
         return const CampaignVictoryScreen();
     }
+  }
+}
+
+/// Fades and lifts each new screen in. The previous screen is removed at
+/// once, so two screens never share the tree or the hit test.
+class _ScreenEntrance extends StatelessWidget {
+  const _ScreenEntrance({super.key, required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final reduced =
+        (context.select<AppState, bool>(
+          (a) => a.save?.settings.reducedEffects ?? false,
+        )) ||
+        MediaQuery.of(context).disableAnimations;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: reduced ? 1 : 0, end: 1),
+      duration: PetalMotion.screen,
+      curve: PetalMotion.snappy,
+      builder: (context, t, child) => Opacity(
+        opacity: t,
+        child: Transform.translate(
+          offset: Offset(0, 14 * (1 - t)),
+          child: child,
+        ),
+      ),
+      child: child,
+    );
   }
 }

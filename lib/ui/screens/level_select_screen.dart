@@ -5,7 +5,9 @@ import '../../campaign/campaign_catalog.dart';
 import '../../campaign/level_generator.dart';
 import '../../campaign/level_models.dart';
 import '../../state/app_state.dart';
+import '../game/block_material.dart';
 import '../theme/petal_theme.dart';
+import '../widgets/petal_button.dart';
 
 /// Fifty levels per world, so this is a compact grid that opens at the player's
 /// current level rather than a long list they would have to scroll every visit.
@@ -58,32 +60,25 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
       (sum, id) => sum + campaign.progressOf(id).stars,
     );
     final currentId = campaign.nextLevelId;
+    final reduced =
+        (app.save?.settings.reducedEffects ?? false) ||
+        MediaQuery.of(context).disableAnimations;
+    final tone = Color.lerp(accent, surfaces.onPanel, 0.2)!;
 
     return GardenBackdrop(
       accent: accent,
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
                 children: [
-                  Material(
-                    color: surfaces.panel.withValues(alpha: 0.7),
-                    shape: const CircleBorder(),
-                    child: InkWell(
-                      customBorder: const CircleBorder(),
-                      onTap: () => app.go(AppScreen.worldMap),
-                      child: Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: Icon(
-                          Icons.arrow_back_rounded,
-                          size: 22,
-                          color: surfaces.onPanel,
-                        ),
-                      ),
-                    ),
+                  PetalIconButton(
+                    icon: Icons.arrow_back_rounded,
+                    tooltip: 'Back',
+                    onPressed: () => app.go(AppScreen.worldMap),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -108,14 +103,34 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-              Text(
-                world.subtitle,
-                style: PetalText.supporting(context),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
               const SizedBox(height: 12),
+              PetalPanel(
+                accent: accent,
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      world.subtitle,
+                      style: PetalText.supporting(context)
+                          .copyWith(color: surfaces.onPanel),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: done / world.levelIds.length,
+                        minHeight: 6,
+                        color: tone,
+                        backgroundColor: surfaces.emptyCell,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
               Expanded(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
@@ -127,7 +142,8 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
                     _scrollToCurrent(world, currentId, tile);
                     return GridView.builder(
                       controller: _scroll,
-                      padding: const EdgeInsets.only(bottom: 20),
+                      // Room for the current tile's pulse without drawing over the header.
+                      padding: const EdgeInsets.fromLTRB(4, 6, 4, 24),
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: columns,
                         mainAxisSpacing: _gap,
@@ -146,6 +162,7 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
                           accent: accent,
                           current: id == currentId && !p.completed,
                           milestone: LevelGenerator.isMilestone(id),
+                          animate: !reduced,
                           onTap: p.unlocked ? () => app.startLevel(id) : null,
                         );
                       },
@@ -171,6 +188,7 @@ class _LevelTile extends StatelessWidget {
     required this.accent,
     required this.current,
     required this.milestone,
+    required this.animate,
     required this.onTap,
   });
 
@@ -182,6 +200,7 @@ class _LevelTile extends StatelessWidget {
   final Color accent;
   final bool current;
   final bool milestone;
+  final bool animate;
   final VoidCallback? onTap;
 
   String get _semanticLabel {
@@ -198,90 +217,141 @@ class _LevelTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final surfaces = PetalSurfaces.of(context);
+    final light = Theme.of(context).brightness == Brightness.light;
     final locked = !unlocked;
     final radius = BorderRadius.circular(PetalRadius.lg);
 
-    return Opacity(
-      opacity: locked ? 0.5 : 1,
-      child: Semantics(
-        button: true,
-        enabled: unlocked,
-        label: _semanticLabel,
-        excludeSemantics: true,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: radius,
-            onTap: onTap,
-            child: Ink(
-              decoration: BoxDecoration(
-                borderRadius: radius,
-                color: current
-                    ? accent.withValues(alpha: 0.34)
-                    : completed
-                    ? accent.withValues(alpha: 0.16)
-                    : surfaces.panel,
-                border: Border.all(
-                  color: current
-                      ? accent
-                      : milestone && unlocked
-                      ? accent.withValues(alpha: 0.75)
-                      : surfaces.panelBorder,
-                  width: current || milestone ? 2 : 1,
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(2),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: locked
-                          ? Icon(
-                              Icons.lock_rounded,
-                              size: 18,
-                              color: surfaces.muted,
-                            )
-                          : Text(
-                              '$id',
-                              style: PetalText.section(context).copyWith(
-                                fontSize: 16,
-                                color: current || completed
-                                    ? surfaces.onPanel
-                                    : accent,
-                              ),
-                            ),
+    final BoxDecoration decoration;
+    final Color numberColor;
+    if (current) {
+      decoration = BoxDecoration(
+        borderRadius: radius,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [surfaces.ctaStart, surfaces.ctaEnd],
+        ),
+        boxShadow: PetalShadows.glow(surfaces.ctaStart),
+      );
+      numberColor = surfaces.onCta;
+    } else if (completed) {
+      decoration = BlockMaterial.filled(
+        color: Color.lerp(accent, surfaces.panel, light ? 0.1 : 0.25)!,
+        surfaces: surfaces,
+        isLight: light,
+        radius: PetalRadius.lg,
+      );
+      numberColor = Colors.white;
+    } else if (unlocked) {
+      decoration = BoxDecoration(
+        borderRadius: radius,
+        color: surfaces.panel.withValues(alpha: 0.9),
+        border: Border.all(
+          color: accent.withValues(alpha: milestone ? 0.95 : 0.6),
+          width: milestone ? 2 : 1.4,
+        ),
+      );
+      numberColor = Color.lerp(accent, surfaces.onPanel, 0.2)!;
+    } else {
+      decoration = BlockMaterial.empty(
+        surfaces: surfaces,
+        isLight: light,
+        radius: PetalRadius.lg,
+      );
+      numberColor = surfaces.muted;
+    }
+
+    Widget tile = Container(
+      decoration: decoration,
+      foregroundDecoration: completed || current
+          ? BlockMaterial.gloss(PetalRadius.lg)
+          : null,
+      padding: const EdgeInsets.all(2),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: locked
+                ? Icon(
+                    Icons.lock_rounded,
+                    size: 18,
+                    color: surfaces.muted.withValues(alpha: 0.7),
+                  )
+                : Text(
+                    '$id',
+                    style: PetalText.section(context)
+                        .copyWith(fontSize: 17, color: numberColor),
+                  ),
+          ),
+          if (completed) ...[
+            const SizedBox(height: 2),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (var s = 0; s < 3; s++)
+                    Icon(
+                      Icons.star_rounded,
+                      size: 13,
+                      color: s < stars
+                          ? surfaces.gold
+                          : Colors.black.withValues(alpha: 0.22),
                     ),
-                    if (completed) ...[
-                      const SizedBox(height: 2),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            for (var s = 0; s < 3; s++)
-                              Icon(
-                                Icons.star_rounded,
-                                size: 12,
-                                color: s < stars
-                                    ? surfaces.accentSoft
-                                    : surfaces.muted.withValues(alpha: 0.3),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ] else if (milestone && !locked) ...[
-                      const SizedBox(height: 2),
-                      Icon(Icons.flag_rounded, size: 12, color: accent),
-                    ],
-                  ],
-                ),
+                ],
               ),
             ),
-          ),
-        ),
+          ] else if (current) ...[
+            Icon(Icons.play_arrow_rounded, size: 16, color: surfaces.onCta),
+          ] else if (milestone && !locked) ...[
+            const SizedBox(height: 2),
+            Icon(Icons.flag_rounded, size: 12, color: accent),
+          ],
+        ],
       ),
+    );
+    if (current && animate) tile = _Pulse(child: tile);
+
+    return Semantics(
+      button: true,
+      enabled: unlocked,
+      label: _semanticLabel,
+      excludeSemantics: true,
+      child: PressScale(onTap: onTap, scale: 0.92, child: tile),
+    );
+  }
+}
+
+/// Gentle breathing scale for the level the player should play next.
+class _Pulse extends StatefulWidget {
+  const _Pulse({required this.child});
+  final Widget child;
+
+  @override
+  State<_Pulse> createState() => _PulseState();
+}
+
+class _PulseState extends State<_Pulse> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(
+      scale: Tween(
+        begin: 1.0,
+        end: 1.06,
+      ).animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut)),
+      child: widget.child,
     );
   }
 }

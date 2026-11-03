@@ -76,13 +76,37 @@ class BoardView extends StatelessWidget {
             label: 'PetalGrid garden board, ${board.size} by ${board.size}',
             child: DecoratedBox(
               key: boardKey,
+              // Greenhouse tray: lit from above, soft rim, deep shadow.
               decoration: BoxDecoration(
-                color: surfaces.boardFrame,
-                borderRadius: BorderRadius.circular(PetalRadius.lg),
-                border: Border.all(
-                  color: surfaces.panelBorder.withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(PetalRadius.xl),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color.lerp(
+                      surfaces.boardFrame,
+                      Colors.white,
+                      isLight ? 0.35 : 0.06,
+                    )!,
+                    surfaces.boardFrame,
+                  ],
                 ),
-                boxShadow: PetalShadows.panel(surfaces.shadow, light: isLight),
+                border: Border.all(
+                  color: isLight
+                      ? surfaces.panelBorder
+                      : Colors.white.withValues(alpha: 0.09),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  ...PetalShadows.panel(surfaces.shadow, light: isLight),
+                  BoxShadow(
+                    color: surfaces.glowA.withValues(
+                      alpha: isLight ? 0.12 : 0.07,
+                    ),
+                    blurRadius: 40,
+                    spreadRadius: 2,
+                  ),
+                ],
               ),
               child: Padding(
                 padding: const EdgeInsets.all(
@@ -211,7 +235,7 @@ class _GuidePainter extends CustomPainter {
   final int size;
   final Set<(int, int)> cells;
 
-  static const _copper = Color(0xFFE0975C);
+  static const _copper = GuideLight.copper;
 
   @override
   void paint(Canvas canvas, Size sz) {
@@ -315,13 +339,15 @@ class _CellTile extends StatelessWidget {
     final isLight = Theme.of(context).brightness == Brightness.light;
 
     BoxDecoration decoration;
+    BoxDecoration? sheen;
     if (cell.blocked) {
-      decoration = BoxDecoration(
-        color: surfaces.blockedCell,
-        borderRadius: BorderRadius.circular(PetalRadius.cell),
-        border: Border.all(color: surfaces.cellBorder),
+      decoration = BlockMaterial.stone(
+        surfaces: surfaces,
+        isLight: isLight,
+        radius: PetalRadius.cell,
       );
     } else if (cell.filled) {
+      sheen = BlockMaterial.gloss(PetalRadius.cell);
       final fill =
           surfaces.blockPalette[cell.colorIndex % surfaces.blockPalette.length];
       decoration = BlockMaterial.filled(
@@ -361,20 +387,7 @@ class _CellTile extends StatelessWidget {
             duration: PetalMotion.instant,
             margin: const EdgeInsets.all(1.75),
             decoration: decoration,
-            child: !cell.filled && !cell.blocked
-                ? Center(
-                    child: Container(
-                      width: 3.5,
-                      height: 3.5,
-                      decoration: BoxDecoration(
-                        color: surfaces.onPanel.withValues(
-                          alpha: isLight ? 0.14 : 0.08,
-                        ),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  )
-                : null,
+            foregroundDecoration: sheen,
           ),
         ),
       ),

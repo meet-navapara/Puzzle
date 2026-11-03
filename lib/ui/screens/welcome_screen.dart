@@ -7,6 +7,7 @@ import '../../core/app_config.dart';
 import '../../services/auth_service.dart';
 import '../../state/app_state.dart';
 import '../theme/petal_theme.dart';
+import '../widgets/ambient_petals.dart';
 import '../widgets/brand_logo.dart';
 import '../widgets/external_link.dart';
 import '../widgets/google_mark.dart';
@@ -21,84 +22,96 @@ class WelcomeScreen extends StatelessWidget {
     final surfaces = PetalSurfaces.of(context);
     final signingIn = app.auth.status == AuthStatus.signingIn;
 
+    final reduced =
+        (app.save?.settings.reducedEffects ?? false) ||
+        MediaQuery.of(context).disableAnimations;
+
     return GardenBackdrop(
-      child: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: IntrinsicHeight(
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 440),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(28, 24, 28, 16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const Spacer(),
-                            const Center(child: BrandLogo(size: 100)),
-                            const SizedBox(height: 16),
-                            Text(
-                              AppConfig.appName,
-                              textAlign: TextAlign.center,
-                              style: PetalText.display(context),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Plant colorful blocks, bloom full rows and columns, '
-                              'and grow through ${CampaignCatalog.totalLevels} garden levels.',
-                              textAlign: TextAlign.center,
-                              style: PetalText.body(context),
-                            ),
-                            const Spacer(),
-                            const SizedBox(height: 24),
-                            if (app.auth.errorMessage != null)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: Text(
-                                  app.auth.errorMessage!,
-                                  textAlign: TextAlign.center,
-                                  style: PetalText.supporting(context)
-                                      .copyWith(color: surfaces.danger),
+      child: Stack(
+        children: [
+          Positioned.fill(child: AmbientPetals(animate: !reduced)),
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight,
+                    ),
+                    child: IntrinsicHeight(
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 440),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(28, 24, 28, 16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const Spacer(),
+                                const Center(child: BrandLogo(size: 100)),
+                                const SizedBox(height: 16),
+                                Semantics(
+                                  header: true,
+                                  label: AppConfig.appName,
+                                  excludeSemantics: true,
+                                  child: const BrandWordmark(size: 40),
                                 ),
-                              ),
-                            _GoogleButton(
-                              signingIn: signingIn,
-                              onPressed: () => app.signInGoogle(),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Plant colorful blocks, bloom full rows and columns, '
+                                  'and grow through ${CampaignCatalog.totalLevels} garden levels.',
+                                  textAlign: TextAlign.center,
+                                  style: PetalText.body(context),
+                                ),
+                                const Spacer(),
+                                const SizedBox(height: 24),
+                                if (app.auth.errorMessage != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 12),
+                                    child: Text(
+                                      app.auth.errorMessage!,
+                                      textAlign: TextAlign.center,
+                                      style: PetalText.supporting(context)
+                                          .copyWith(color: surfaces.danger),
+                                    ),
+                                  ),
+                                _GoogleButton(
+                                  signingIn: signingIn,
+                                  onPressed: () => app.signInGoogle(),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Keeps your progress safe across devices',
+                                  textAlign: TextAlign.center,
+                                  style: PetalText.caption(context),
+                                ),
+                                const SizedBox(height: 16),
+                                OutlinedButton(
+                                  onPressed: signingIn
+                                      ? null
+                                      : () => app.continueAsGuest(),
+                                  child: const Text('Play as Guest'),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Progress stays on this device. Link Google any time in Settings.',
+                                  textAlign: TextAlign.center,
+                                  style: PetalText.caption(context),
+                                ),
+                                const SizedBox(height: 20),
+                                const _LegalLine(),
+                              ],
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Keeps your progress safe across devices',
-                              textAlign: TextAlign.center,
-                              style: PetalText.caption(context),
-                            ),
-                            const SizedBox(height: 16),
-                            OutlinedButton(
-                              onPressed: signingIn
-                                  ? null
-                                  : () => app.continueAsGuest(),
-                              child: const Text('Play as Guest'),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Progress stays on this device. Link Google any time in Settings.',
-                              textAlign: TextAlign.center,
-                              style: PetalText.caption(context),
-                            ),
-                            const SizedBox(height: 20),
-                            const _LegalLine(),
-                          ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ),
-            );
-          },
-        ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

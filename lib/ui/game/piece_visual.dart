@@ -69,6 +69,9 @@ class PieceVisual extends StatelessWidget {
                       ? (bare ? 1.4 : 1.15)
                       : (bare ? 1.2 : 0.9),
                 ),
+                foregroundDecoration: BlockMaterial.gloss(
+                  bare ? 7 : PetalRadius.block,
+                ),
               ),
             ),
         ],
@@ -93,16 +96,37 @@ class PieceVisual extends StatelessWidget {
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
                 decoration: BoxDecoration(
-                  color: selected
-                      ? surfaces.accent.withValues(alpha: isLight ? 0.1 : 0.12)
-                      : surfaces.panel,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(PetalRadius.xl),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: selected
+                        ? [
+                            surfaces.accent.withValues(
+                              alpha: isLight ? 0.16 : 0.2,
+                            ),
+                            surfaces.accent.withValues(
+                              alpha: isLight ? 0.06 : 0.08,
+                            ),
+                          ]
+                        : [
+                            surfaces.panel.withValues(
+                              alpha: isLight ? 0.95 : 0.8,
+                            ),
+                            surfaces.panel.withValues(
+                              alpha: isLight ? 0.75 : 0.5,
+                            ),
+                          ],
+                  ),
                   border: Border.all(
                     color: selected
-                        ? surfaces.accent.withValues(alpha: 0.65)
-                        : surfaces.panelBorder,
-                    width: selected ? 1.8 : 1,
+                        ? surfaces.accent.withValues(alpha: 0.8)
+                        : surfaces.panelBorder.withValues(alpha: 0.7),
+                    width: selected ? 2 : 1,
                   ),
+                  boxShadow: selected
+                      ? PetalShadows.glow(surfaces.accent, strength: 0.6)
+                      : null,
                 ),
                 child: Center(child: blocks),
               ),

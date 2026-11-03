@@ -18,6 +18,7 @@ class PetalText {
     required FontWeight weight,
     Color? color,
     double height = 1.25,
+    double letterSpacing = 0,
   }) {
     final surfaces = PetalSurfaces.of(context);
     return TextStyle(
@@ -29,15 +30,20 @@ class PetalText {
       decorationColor: Colors.transparent,
       decorationThickness: 0,
       fontFamily: renderFontFamily,
-      letterSpacing: 0,
+      letterSpacing: letterSpacing,
     );
   }
 
-  static TextStyle display(BuildContext context) =>
-      _base(context, size: 28, weight: FontWeight.w800, height: 1.15);
+  static TextStyle display(BuildContext context) => _base(
+    context,
+    size: 30,
+    weight: FontWeight.w900,
+    height: 1.1,
+    letterSpacing: -0.4,
+  );
 
   static TextStyle screenTitle(BuildContext context) =>
-      _base(context, size: 20, weight: FontWeight.w800);
+      _base(context, size: 21, weight: FontWeight.w800, letterSpacing: -0.2);
 
   static TextStyle section(BuildContext context) =>
       _base(context, size: 16, weight: FontWeight.w700);
@@ -56,25 +62,31 @@ class PetalText {
       _base(context, size: 16, weight: FontWeight.w800);
 
   /// Large centered run score (classic / campaign HUD).
-  static TextStyle heroScore(BuildContext context) =>
-      _base(context, size: 44, weight: FontWeight.w800, height: 1.05);
+  static TextStyle heroScore(BuildContext context) => _base(
+    context,
+    size: 46,
+    weight: FontWeight.w900,
+    height: 1.0,
+    letterSpacing: -1,
+  );
 
   static TextStyle highScore(BuildContext context) => _base(
     context,
     size: 15,
     weight: FontWeight.w700,
-    color: const Color(0xFFF5C542),
+    color: PetalSurfaces.of(context).gold,
   );
 
   static TextStyle scoreLabel(BuildContext context) => _base(
     context,
-    size: 10,
-    weight: FontWeight.w600,
+    size: 10.5,
+    weight: FontWeight.w700,
+    letterSpacing: 0.8,
     color: PetalSurfaces.of(context).muted,
   );
 
   static TextStyle button(BuildContext context) =>
-      _base(context, size: 15, weight: FontWeight.w800);
+      _base(context, size: 15.5, weight: FontWeight.w800, letterSpacing: 0.2);
 
   static TextStyle caption(BuildContext context) => _base(
     context,

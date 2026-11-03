@@ -34,7 +34,9 @@ class TutorialCoach {
   }) {
     if (!state.isPlaying) return null;
     TutorialMove? best;
-    var bestScore = -1;
+    // Penalties can push every score negative (preferLineClear on a fresh
+    // board), so start below any reachable score rather than at -1.
+    var bestScore = -(1 << 30);
 
     for (final piece in state.tray) {
       if (piece.used) continue;

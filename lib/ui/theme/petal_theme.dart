@@ -37,6 +37,12 @@ class PetalSurfaces extends ThemeExtension<PetalSurfaces> {
     required this.disabled,
     required this.scrim,
     required this.shadow,
+    required this.glowA,
+    required this.glowB,
+    required this.gold,
+    required this.ctaStart,
+    required this.ctaEnd,
+    required this.onCta,
   });
 
   final Color backdropTop;
@@ -65,75 +71,100 @@ class PetalSurfaces extends ThemeExtension<PetalSurfaces> {
   final Color scrim;
   final Color shadow;
 
+  /// Soft light pools behind every screen (top-left and bottom-right).
+  final Color glowA;
+  final Color glowB;
+
+  /// Stars, best scores and rewards.
+  final Color gold;
+
+  /// Primary call-to-action gradient (Play, Next level, Start).
+  final Color ctaStart;
+  final Color ctaEnd;
+  final Color onCta;
+
+  /// Twilight garden: plum night sky, glazed pastel petals.
   static const dark = PetalSurfaces(
-    backdropTop: Color(0xFF12161E),
-    backdropBottom: Color(0xFF1A2330),
-    panel: Color(0xFF252C38),
-    panelBorder: Color(0xFF3D4658),
-    boardFrame: Color(0xFF171C26),
-    emptyCell: Color(0xFF2C3444),
-    blockedCell: Color(0xFF3F4758),
-    cellBorder: Color(0x22FFFFFF),
-    hudChip: Color(0xFF2A3140),
-    accent: Color(0xFF5ECF9A),
-    accentSoft: Color(0xFFE8A87C),
-    onAccent: Color(0xFF0E1410),
-    danger: Color(0xFFE57373),
-    validGhost: Color(0x995ECF9A),
-    invalidGhost: Color(0x99E57373),
-    clearFlash: Color(0xFFFFF3C4),
+    backdropTop: Color(0xFF1A1530),
+    backdropBottom: Color(0xFF0E1A24),
+    panel: Color(0xFF241F3B),
+    panelBorder: Color(0xFF3B3459),
+    boardFrame: Color(0xFF1B1731),
+    emptyCell: Color(0xFF2B2546),
+    blockedCell: Color(0xFF4F4668),
+    cellBorder: Color(0x16FFFFFF),
+    hudChip: Color(0xFF2A2446),
+    accent: Color(0xFF62E0B6),
+    accentSoft: Color(0xFFFF9E7D),
+    onAccent: Color(0xFF0A1A14),
+    danger: Color(0xFFFF7A86),
+    validGhost: Color(0x9962E0B6),
+    invalidGhost: Color(0x99FF7A86),
+    clearFlash: Color(0xFFFFF1C9),
     placeFlash: Color(0x88FFFFFF),
     blockPalette: [
-      Color(0xFF5ECF9A),
-      Color(0xFFE8A87C),
-      Color(0xFF64C5C5),
-      Color(0xFFE8D48A),
-      Color(0xFF9B8EC4),
-      Color(0xFFE07A6E),
+      Color(0xFF6EE0AE),
+      Color(0xFFFFB07C),
+      Color(0xFF74C8F7),
+      Color(0xFFFFD86B),
+      Color(0xFFB79CFF),
+      Color(0xFFFF8BA7),
     ],
-    onPanel: Color(0xFFF2F5F8),
-    muted: Color(0xFF9AA3B5),
-    success: Color(0xFF5ECF9A),
-    warning: Color(0xFFE8D48A),
-    disabled: Color(0xFF5A6270),
-    scrim: Color(0x99000000),
-    shadow: Color(0x66000000),
+    onPanel: Color(0xFFF6F3FF),
+    muted: Color(0xFFA8A1C4),
+    success: Color(0xFF62E0B6),
+    warning: Color(0xFFFFD86B),
+    disabled: Color(0xFF5C5677),
+    scrim: Color(0xB30A0816),
+    shadow: Color(0x80060410),
+    glowA: Color(0xFFFF7FA3),
+    glowB: Color(0xFF46CFA8),
+    gold: Color(0xFFFFC94D),
+    ctaStart: Color(0xFFFF8AA6),
+    ctaEnd: Color(0xFFFF9A62),
+    onCta: Color(0xFFFFFFFF),
   );
 
-  /// Light garden palette — solid, high-contrast blocks (no soft glow haze).
+  /// Morning garden: blush cream sky, saturated glazed petals.
   static const light = PetalSurfaces(
-    backdropTop: Color(0xFFE4F0E8),
-    backdropBottom: Color(0xFFF4F9F5),
+    backdropTop: Color(0xFFFFF3EF),
+    backdropBottom: Color(0xFFEDF5FF),
     panel: Color(0xFFFFFFFF),
-    panelBorder: Color(0xFFBFD2C6),
-    boardFrame: Color(0xFF1A3328),
-    emptyCell: Color(0xFFC9DCD0),
-    blockedCell: Color(0xFF3E4F46),
-    cellBorder: Color(0x42000000),
-    hudChip: Color(0xFFEEF5F0),
-    accent: Color(0xFF2D6A4F),
-    accentSoft: Color(0xFFD97757),
+    panelBorder: Color(0xFFE4DAEF),
+    boardFrame: Color(0xFFEDE5F7),
+    emptyCell: Color(0xFFDCD2EC),
+    blockedCell: Color(0xFF7B6F95),
+    cellBorder: Color(0x1A2B1E4A),
+    hudChip: Color(0xFFF6F1FC),
+    accent: Color(0xFF1F9C76),
+    accentSoft: Color(0xFFEF6A4C),
     onAccent: Color(0xFFFFFFFF),
-    danger: Color(0xFFC1121F),
-    validGhost: Color(0xCC3FA87A),
-    invalidGhost: Color(0xCCE07A5F),
-    clearFlash: Color(0xFFFFE8A3),
-    placeFlash: Color(0x55FFF8E7),
+    danger: Color(0xFFD62846),
+    validGhost: Color(0xCC2FB98A),
+    invalidGhost: Color(0xCCE5546A),
+    clearFlash: Color(0xFFFFE7A0),
+    placeFlash: Color(0x66FFFFFF),
     blockPalette: [
-      Color(0xFF2F9E6A),
-      Color(0xFFD96545),
-      Color(0xFF1FA8A0),
-      Color(0xFFD4A52E),
-      Color(0xFF6B5A96),
-      Color(0xFFC94A3A),
+      Color(0xFF2DB889),
+      Color(0xFFF28A47),
+      Color(0xFF3A9FE2),
+      Color(0xFFE5AE1C),
+      Color(0xFF8A68E6),
+      Color(0xFFEE5F7E),
     ],
-    onPanel: Color(0xFF122018),
-    muted: Color(0xFF5A6B60),
-    success: Color(0xFF2D6A4F),
-    warning: Color(0xFF9A7B00),
-    disabled: Color(0xFFA0A8A3),
-    scrim: Color(0x73000000),
-    shadow: Color(0x28000000),
+    onPanel: Color(0xFF241D3B),
+    muted: Color(0xFF6D6589),
+    success: Color(0xFF1F9C76),
+    warning: Color(0xFF9A6E00),
+    disabled: Color(0xFFB2ABC2),
+    scrim: Color(0x80180F2E),
+    shadow: Color(0x33402A70),
+    glowA: Color(0xFFFFB3C6),
+    glowB: Color(0xFF9BE3CC),
+    gold: Color(0xFFE09A00),
+    ctaStart: Color(0xFFF7668A),
+    ctaEnd: Color(0xFFF7894A),
+    onCta: Color(0xFFFFFFFF),
   );
 
   static PetalSurfaces of(BuildContext context) {
@@ -167,6 +198,12 @@ class PetalSurfaces extends ThemeExtension<PetalSurfaces> {
     Color? disabled,
     Color? scrim,
     Color? shadow,
+    Color? glowA,
+    Color? glowB,
+    Color? gold,
+    Color? ctaStart,
+    Color? ctaEnd,
+    Color? onCta,
   }) {
     return PetalSurfaces(
       backdropTop: backdropTop ?? this.backdropTop,
@@ -194,6 +231,12 @@ class PetalSurfaces extends ThemeExtension<PetalSurfaces> {
       disabled: disabled ?? this.disabled,
       scrim: scrim ?? this.scrim,
       shadow: shadow ?? this.shadow,
+      glowA: glowA ?? this.glowA,
+      glowB: glowB ?? this.glowB,
+      gold: gold ?? this.gold,
+      ctaStart: ctaStart ?? this.ctaStart,
+      ctaEnd: ctaEnd ?? this.ctaEnd,
+      onCta: onCta ?? this.onCta,
     );
   }
 
@@ -330,11 +373,10 @@ class PetalTheme {
           foregroundColor: surfaces.onAccent,
           disabledBackgroundColor: surfaces.disabled.withValues(alpha: 0.35),
           disabledForegroundColor: surfaces.muted,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          minimumSize: const Size(48, 44),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(PetalRadius.md),
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+          minimumSize: const Size(48, 48),
+          elevation: 0,
+          shape: const StadiumBorder(),
           textStyle: _style(
             size: 15,
             weight: FontWeight.w800,
@@ -346,11 +388,9 @@ class PetalTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: surfaces.accent,
           side: BorderSide(color: surfaces.accent, width: 1.6),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-          minimumSize: const Size(48, 44),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(PetalRadius.md),
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          minimumSize: const Size(48, 48),
+          shape: const StadiumBorder(),
           textStyle: _style(
             size: 15,
             weight: FontWeight.w800,
@@ -417,13 +457,19 @@ class GardenBackdrop extends StatelessWidget {
   const GardenBackdrop({super.key, required this.child, this.accent});
 
   final Widget child;
+
+  /// Tints the sky toward a world's colour.
   final Color? accent;
 
   @override
   Widget build(BuildContext context) {
     final s = PetalSurfaces.of(context);
-    final a = accent ?? s.accent;
     final brightness = Theme.of(context).brightness;
+    final light = brightness == Brightness.light;
+    final tint = accent == null
+        ? s.backdropTop
+        : Color.lerp(s.backdropTop, accent, light ? 0.06 : 0.1)!;
+    final pool = accent ?? s.glowB;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: PetalTheme.overlayFor(brightness),
       child: DecoratedBox(
@@ -431,14 +477,38 @@ class GardenBackdrop extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              s.backdropTop,
-              Color.lerp(s.backdropTop, a, 0.1) ?? s.backdropBottom,
-              s.backdropBottom,
-            ],
+            colors: [tint, s.backdropBottom],
           ),
         ),
-        child: Material(color: Colors.transparent, elevation: 0, child: child),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: const Alignment(-0.9, -0.85),
+              radius: 1.1,
+              colors: [
+                s.glowA.withValues(alpha: light ? 0.28 : 0.16),
+                s.glowA.withValues(alpha: 0),
+              ],
+            ),
+          ),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: const Alignment(1.0, 0.95),
+                radius: 1.2,
+                colors: [
+                  pool.withValues(alpha: light ? 0.26 : 0.14),
+                  pool.withValues(alpha: 0),
+                ],
+              ),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              elevation: 0,
+              child: child,
+            ),
+          ),
+        ),
       ),
     );
   }

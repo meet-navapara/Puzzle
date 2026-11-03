@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../state/app_state.dart';
 import '../theme/petal_theme.dart';
+import '../widgets/petal_button.dart';
 
 class DailyScreen extends StatelessWidget {
   const DailyScreen({super.key});
@@ -22,12 +23,10 @@ class DailyScreen extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  IconButton(
+                  PetalIconButton(
+                    icon: Icons.arrow_back_rounded,
+                    tooltip: 'Back',
                     onPressed: () => app.go(AppScreen.mainMenu),
-                    icon: Icon(
-                      Icons.arrow_back_rounded,
-                      color: surfaces.onPanel,
-                    ),
                   ),
                   Expanded(
                     child: Text(
@@ -42,17 +41,29 @@ class DailyScreen extends StatelessWidget {
               const Spacer(),
               Center(
                 child: Container(
-                  width: 88,
-                  height: 88,
+                  width: 104,
+                  height: 104,
                   decoration: BoxDecoration(
-                    color: surfaces.panel,
                     shape: BoxShape.circle,
-                    border: Border.all(color: surfaces.panelBorder),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color.lerp(
+                          surfaces.blockPalette[2],
+                          Colors.white,
+                          0.3,
+                        )!,
+                        surfaces.blockPalette[2],
+                      ],
+                    ),
+                    border: Border.all(color: surfaces.panel, width: 5),
+                    boxShadow: PetalShadows.glow(surfaces.blockPalette[2]),
                   ),
-                  child: Icon(
+                  child: const Icon(
                     Icons.water_drop_rounded,
-                    size: 44,
-                    color: surfaces.accent,
+                    size: 50,
+                    color: Colors.white,
                   ),
                 ),
               ),
@@ -75,15 +86,31 @@ class DailyScreen extends StatelessWidget {
                   vertical: 14,
                 ),
                 decoration: BoxDecoration(
-                  color: surfaces.panel,
-                  borderRadius: BorderRadius.circular(PetalRadius.md),
-                  border: Border.all(color: surfaces.panelBorder),
+                  color: surfaces.panel.withValues(alpha: 0.85),
+                  borderRadius: BorderRadius.circular(PetalRadius.xl),
+                  border: Border.all(
+                    color: claimed
+                        ? surfaces.panelBorder
+                        : surfaces.accentSoft.withValues(alpha: 0.7),
+                  ),
                 ),
                 child: Column(
                   children: [
-                    Text(
-                      '+15 petals',
-                      style: PetalText.score(context).copyWith(fontSize: 22),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.local_florist_rounded,
+                          color: surfaces.accentSoft,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '+15 petals',
+                          style: PetalText.score(context)
+                              .copyWith(fontSize: 24),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -144,21 +171,17 @@ class DailyScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
               ],
-              ElevatedButton(
-                style: app.shouldGuideDaily && !claimed
-                    ? ElevatedButton.styleFrom(
-                        side: BorderSide(color: surfaces.accentSoft, width: 2),
-                      )
-                    : null,
+              PetalButton(
+                label: claimed ? 'Already claimed today' : 'Watch & Claim',
+                icon: claimed
+                    ? Icons.check_rounded
+                    : Icons.ondemand_video_rounded,
                 onPressed: claimed
                     ? null
                     : () {
                         app.claimDailyBonus();
                         if (app.shouldGuideDaily) app.completeDailyTour();
                       },
-                child: Text(
-                  claimed ? 'Already claimed today' : 'Watch & Claim',
-                ),
               ),
             ],
           ),

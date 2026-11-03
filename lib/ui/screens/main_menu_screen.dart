@@ -5,7 +5,9 @@ import '../../campaign/campaign_catalog.dart';
 import '../../core/app_config.dart';
 import '../../state/app_state.dart';
 import '../theme/petal_theme.dart';
+import '../widgets/ambient_petals.dart';
 import '../widgets/brand_logo.dart';
+import '../widgets/petal_button.dart';
 
 class MainMenuScreen extends StatelessWidget {
   const MainMenuScreen({super.key});
@@ -16,146 +18,179 @@ class MainMenuScreen extends StatelessWidget {
     final surfaces = PetalSurfaces.of(context);
     final completed = app.save?.campaign.completedCount ?? 0;
     final petals = app.save?.campaign.petals ?? 0;
+    final stars = app.save?.campaign.totalStars ?? 0;
     final best = app.save?.classicBest ?? 0;
+    final nextId = app.save?.campaign.nextLevelId ?? 1;
+    final nextLevel = CampaignCatalog.level(nextId);
+    final world = CampaignCatalog.worlds[nextLevel.worldIndex];
+    final reduced =
+        (app.save?.settings.reducedEffects ?? false) ||
+        MediaQuery.of(context).disableAnimations;
+    final coaching = app.guideHomeClassic || app.guideHomeDaily;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: GardenBackdrop(
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 10, 20, 18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _TopBar(onSettings: () => app.go(AppScreen.settings)),
-                const SizedBox(height: 18),
-                Expanded(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final tall = constraints.maxHeight > 560;
-                      return SingleChildScrollView(
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            minHeight: constraints.maxHeight,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _BrandHero(compact: !tall),
-                              SizedBox(height: tall ? 18 : 12),
-                              _ProgressRibbon(
-                                completed: completed,
-                                petals: petals,
-                                best: best,
+        child: Stack(
+          children: [
+            Positioned.fill(child: AmbientPetals(animate: !reduced)),
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _TopBar(
+                      petals: petals,
+                      stars: stars,
+                      onSettings: () => app.go(AppScreen.settings),
+                    ),
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final tall = constraints.maxHeight > 600;
+                          return SingleChildScrollView(
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                minHeight: constraints.maxHeight,
                               ),
-                              SizedBox(height: tall ? 20 : 14),
-                              if (app.hasResumableGame) ...[
-                                _FeatureCard(
-                                  title: 'Continue Garden',
-                                  subtitle: 'Resume your saved mid-run board',
-                                  icon: Icons.play_circle_filled_rounded,
-                                  onTap: () {
-                                    if (app.guideHomeClassic ||
-                                        app.guideHomeDaily) {
-                                      _guardHome(context, app, () {});
-                                      return;
-                                    }
-                                    if (!app.resumeActiveGame() &&
-                                        context.mounted) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                'Could not resume — start a new garden.',
-                                              ),
-                                            ),
-                                          );
-                                    }
-                                  },
-                                  height: tall ? 96 : 84,
-                                  emphasized: true,
-                                  accent: surfaces.accentSoft,
-                                ),
-                                const SizedBox(height: 10),
-                              ],
-                              _FeatureCard(
-                                title: 'Classic Garden',
-                                subtitle: 'Endless play · beat your best',
-                                icon: Icons.spa_rounded,
-                                onTap: app.startClassic,
-                                height: tall ? 108 : 90,
-                                emphasized:
-                                    !app.hasResumableGame ||
-                                    app.guideHomeClassic,
-                                coached: app.guideHomeClassic,
-                                accent: surfaces.accent,
-                              ),
-                              const SizedBox(height: 10),
-                              _FeatureCard(
-                                title: 'Campaign',
-                                subtitle: completed == 0
-                                    ? '${CampaignCatalog.worlds.length} worlds · ${CampaignCatalog.totalLevels} levels'
-                                    : 'Next: level ${app.save!.campaign.nextLevelId} of ${CampaignCatalog.totalLevels}',
-                                icon: Icons.map_rounded,
-                                onTap: () =>
-                                    _guardHome(context, app, app.openWorldMap),
-                                height: tall ? 88 : 78,
-                                accent: surfaces.accentSoft,
-                              ),
-                              const SizedBox(height: 10),
-                              _FeatureCard(
-                                title: 'Daily Dew',
-                                subtitle: 'Optional ad bonus · +15 petals',
-                                icon: Icons.water_drop_rounded,
-                                onTap: () => _guardHome(
-                                  context,
-                                  app,
-                                  () => app.go(AppScreen.daily),
-                                  allowWhen: app.guideHomeDaily,
-                                ),
-                                height: tall ? 88 : 78,
-                                coached: app.guideHomeDaily,
-                                accent: surfaces.blockPalette[2],
-                              ),
-                              SizedBox(height: tall ? 20 : 12),
-                              Center(
-                                child: TextButton.icon(
-                                  onPressed: () => _showTutorial(context, app),
-                                  icon: Icon(
-                                    Icons.menu_book_rounded,
-                                    size: 18,
-                                    color: surfaces.accent,
-                                  ),
-                                  label: Text(
-                                    'How to Play',
-                                    style: PetalText.button(context).copyWith(
-                                      color: surfaces.accent,
-                                      fontSize: 14,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  SizedBox(height: tall ? 8 : 4),
+                                  _BrandHero(compact: !tall, animate: !reduced),
+                                  SizedBox(height: tall ? 28 : 18),
+                                  if (app.hasResumableGame)
+                                    PetalButton(
+                                      label: 'Continue Garden',
+                                      subtitle: 'Resume your saved board',
+                                      icon: Icons.play_arrow_rounded,
+                                      height: 68,
+                                      onPressed: () {
+                                        if (coaching) {
+                                          _guardHome(context, app, () {});
+                                          return;
+                                        }
+                                        if (!app.resumeActiveGame() &&
+                                            context.mounted) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                    'Could not resume — start a new garden.',
+                                                  ),
+                                                ),
+                                              );
+                                        }
+                                      },
+                                    )
+                                  else
+                                    PetalButton(
+                                      label: 'Play',
+                                      subtitle: 'Level $nextId · ${world.name}',
+                                      icon: Icons.play_arrow_rounded,
+                                      height: 68,
+                                      onPressed: () => _guardHome(
+                                        context,
+                                        app,
+                                        app.playNextLevel,
+                                      ),
+                                    ),
+                                  const SizedBox(height: 14),
+                                  _CampaignCard(
+                                    completed: completed,
+                                    subtitle: completed == 0
+                                        ? '${CampaignCatalog.worlds.length} worlds · ${CampaignCatalog.totalLevels} levels'
+                                        : 'Next: level $nextId of ${CampaignCatalog.totalLevels}',
+                                    accent: Color(world.accentColorValue),
+                                    onTap: () => _guardHome(
+                                      context,
+                                      app,
+                                      app.openWorldMap,
                                     ),
                                   ),
-                                ),
+                                  const SizedBox(height: 12),
+                                  IntrinsicHeight(
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        Expanded(
+                                          child: _ModeTile(
+                                            title: 'Classic Garden',
+                                            subtitle: best > 0
+                                                ? 'Best $best'
+                                                : 'Endless play',
+                                            icon: Icons.spa_rounded,
+                                            accent: surfaces.accent,
+                                            coached: app.guideHomeClassic,
+                                            onTap: app.startClassic,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: _ModeTile(
+                                            title: 'Daily Dew',
+                                            subtitle:
+                                                'Optional ad · +15 petals',
+                                            icon: Icons.water_drop_rounded,
+                                            accent: surfaces.blockPalette[2],
+                                            coached: app.guideHomeDaily,
+                                            onTap: () => _guardHome(
+                                              context,
+                                              app,
+                                              () => app.go(AppScreen.daily),
+                                              allowWhen: app.guideHomeDaily,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(height: tall ? 18 : 10),
+                                  Center(
+                                    child: TextButton.icon(
+                                      onPressed: () =>
+                                          _showTutorial(context, app),
+                                      icon: Icon(
+                                        Icons.menu_book_rounded,
+                                        size: 18,
+                                        color: surfaces.accent,
+                                      ),
+                                      label: Text(
+                                        'How to Play',
+                                        style: PetalText.button(context)
+                                            .copyWith(
+                                              color: surfaces.accent,
+                                              fontSize: 14,
+                                            ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    if (coaching)
+                      _HomeCoach(
+                        daily: app.guideHomeDaily,
+                        onSkip: () {
+                          if (app.guideHomeClassic) {
+                            app.completeClassicTour();
+                          } else {
+                            app.completeDailyTour();
+                          }
+                        },
+                      ),
+                  ],
                 ),
-                if (app.guideHomeClassic || app.guideHomeDaily)
-                  _HomeCoach(
-                    daily: app.guideHomeDaily,
-                    onSkip: () {
-                      if (app.guideHomeClassic) {
-                        app.completeClassicTour();
-                      } else {
-                        app.completeDailyTour();
-                      }
-                    },
-                  ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -184,45 +219,92 @@ class MainMenuScreen extends StatelessWidget {
 
   void _showTutorial(BuildContext context, AppState app) {
     final surfaces = PetalSurfaces.of(context);
+    const steps = <(IconData, String)>[
+      (
+        Icons.pan_tool_alt_rounded,
+        'Drag a piece onto empty cells, or tap it, then tap the board.',
+      ),
+      (
+        Icons.view_week_rounded,
+        'Fill a whole row or column and it blooms away.',
+      ),
+      (Icons.bolt_rounded, 'Clear again on the next move for a combo.'),
+      (
+        Icons.local_florist_rounded,
+        'Clears fill Bloom Charge. Prune removes one stuck cell.',
+      ),
+      (Icons.star_rounded, 'Finish in fewer moves for three stars.'),
+      (Icons.grid_off_rounded, 'The garden ends when no tray piece fits.'),
+    ];
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: surfaces.panel,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('How PetalGrid works', style: PetalText.screenTitle(ctx)),
-              const SizedBox(height: 12),
-              Text(
-                '1. Drag (or tap-select then tap a cell) to plant a piece.\n'
-                '2. Complete a full row or column — it blooms clear.\n'
-                '3. Chain clears for Bloom Streaks and bigger scores.\n'
-                '4. Fill Bloom Charge, then Prune one stuck cell.\n'
-                '5. Spend petals for an extra bloom charge if needed.\n'
-                '6. The garden ends when no tray piece can fit.',
-                style: PetalText.body(ctx).copyWith(height: 1.5),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 12, 22, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: surfaces.panelBorder,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text('How PetalGrid works', style: PetalText.screenTitle(ctx)),
+                const SizedBox(height: 14),
+                for (final (icon, text) in steps)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: surfaces.accent.withValues(alpha: 0.16),
+                          ),
+                          child: Icon(icon, size: 18, color: surfaces.accent),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            text,
+                            style: PetalText.body(ctx).copyWith(height: 1.35),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 4),
+                Text(
+                  'Replay the guided lessons any time from Settings.',
+                  style: PetalText.caption(ctx),
+                ),
+                const SizedBox(height: 14),
+                PetalButton(
+                  label: 'Got it',
                   onPressed: () {
                     app.updateSettings(
                       app.save!.settings.copyWith(tutorialSeen: true),
                     );
                     Navigator.pop(ctx);
                   },
-                  child: const Text('Got it'),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
@@ -240,37 +322,56 @@ class _HomeCoach extends StatelessWidget {
   Widget build(BuildContext context) {
     final surfaces = PetalSurfaces.of(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: surfaces.panel,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: surfaces.accentSoft),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                daily ? 'Step 2 · Daily Dew' : 'Step 1 · Classic Garden',
-                style: PetalText.caption(
-                  context,
-                ).copyWith(color: surfaces.accent, fontWeight: FontWeight.w800),
+      padding: const EdgeInsets.only(top: 6),
+      child: PetalPanel(
+        accent: surfaces.gold,
+        padding: const EdgeInsets.fromLTRB(14, 12, 8, 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: surfaces.gold.withValues(alpha: 0.18),
               ),
-              const SizedBox(height: 4),
-              Text(
-                daily
-                    ? 'Daily Dew is optional. Tap the glowing card. You claim the petals yourself.'
-                    : 'Classic Garden never ends. Tap the glowing card, then plant the highlighted piece yourself.',
-                style: PetalText.body(context).copyWith(height: 1.35),
+              child: Icon(
+                Icons.touch_app_rounded,
+                size: 18,
+                color: surfaces.gold,
               ),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(onPressed: onSkip, child: const Text('Skip')),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    daily ? 'Step 2 · Daily Dew' : 'Step 1 · Classic Garden',
+                    style: PetalText.caption(context).copyWith(
+                      color: surfaces.gold,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    daily
+                        ? 'Daily Dew is optional. Tap the glowing card. You claim the petals yourself.'
+                        : 'Classic Garden never ends. Tap the glowing card, then plant the highlighted piece yourself.',
+                    style: PetalText.body(context).copyWith(height: 1.35),
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: onSkip,
+                      child: const Text('Skip'),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -278,7 +379,13 @@ class _HomeCoach extends StatelessWidget {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.onSettings});
+  const _TopBar({
+    required this.petals,
+    required this.stars,
+    required this.onSettings,
+  });
+  final int petals;
+  final int stars;
   final VoidCallback onSettings;
 
   @override
@@ -286,83 +393,112 @@ class _TopBar extends StatelessWidget {
     final surfaces = PetalSurfaces.of(context);
     return Row(
       children: [
+        PetalChip(
+          icon: Icons.local_florist_rounded,
+          value: '$petals',
+          color: surfaces.accentSoft,
+          label: 'petals',
+        ),
+        const SizedBox(width: 8),
+        PetalChip(
+          icon: Icons.star_rounded,
+          value: '$stars',
+          color: surfaces.gold,
+          label: 'stars',
+        ),
         const Spacer(),
-        _GhostIconButton(
+        PetalIconButton(
+          icon: Icons.settings_rounded,
           tooltip: 'Settings',
-          icon: Icons.settings_outlined,
           onPressed: onSettings,
-          color: surfaces.onPanel,
         ),
       ],
     );
   }
 }
 
-class _GhostIconButton extends StatelessWidget {
-  const _GhostIconButton({
-    required this.tooltip,
-    required this.icon,
-    required this.onPressed,
-    required this.color,
-  });
-
-  final String tooltip;
-  final IconData icon;
-  final VoidCallback onPressed;
-  final Color color;
+/// Logo in a glowing ring that breathes slowly, over the gradient wordmark.
+class _BrandHero extends StatefulWidget {
+  const _BrandHero({required this.compact, required this.animate});
+  final bool compact;
+  final bool animate;
 
   @override
-  Widget build(BuildContext context) {
-    final surfaces = PetalSurfaces.of(context);
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: surfaces.panel.withValues(alpha: 0.55),
-        shape: const CircleBorder(),
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: onPressed,
-          child: Padding(
-            padding: const EdgeInsets.all(10),
-            child: Icon(icon, size: 20, color: color),
-          ),
-        ),
-      ),
-    );
-  }
+  State<_BrandHero> createState() => _BrandHeroState();
 }
 
-class _BrandHero extends StatelessWidget {
-  const _BrandHero({required this.compact});
-  final bool compact;
+class _BrandHeroState extends State<_BrandHero>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 3200),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.animate) _c.repeat(reverse: true);
+  }
+
+  @override
+  void didUpdateWidget(_BrandHero old) {
+    super.didUpdateWidget(old);
+    if (widget.animate && !_c.isAnimating) {
+      _c.repeat(reverse: true);
+    } else if (!widget.animate && _c.isAnimating) {
+      _c.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final surfaces = PetalSurfaces.of(context);
+    final logo = widget.compact ? 76.0 : 96.0;
     return Column(
       children: [
-        Container(
-          padding: EdgeInsets.all(compact ? 10 : 14),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: surfaces.panel.withValues(alpha: 0.7),
-            border: Border.all(color: surfaces.accent.withValues(alpha: 0.28)),
-            boxShadow: [
-              BoxShadow(
-                color: surfaces.accent.withValues(alpha: 0.12),
-                blurRadius: 28,
-                spreadRadius: 2,
+        AnimatedBuilder(
+          animation: _c,
+          builder: (context, child) {
+            final t = Curves.easeInOut.transform(_c.value);
+            return Transform.scale(scale: 1 + 0.035 * t, child: child);
+          },
+          child: Container(
+            padding: EdgeInsets.all(widget.compact ? 16 : 20),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  surfaces.panel.withValues(alpha: 0.9),
+                  surfaces.panel.withValues(alpha: 0.55),
+                ],
               ),
-            ],
+              border: Border.all(
+                color: surfaces.glowA.withValues(alpha: 0.35),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: surfaces.glowA.withValues(alpha: 0.22),
+                  blurRadius: 40,
+                  spreadRadius: 4,
+                ),
+              ],
+            ),
+            child: BrandLogo(size: logo),
           ),
-          child: BrandLogo(size: compact ? 56 : 72),
         ),
-        SizedBox(height: compact ? 12 : 16),
-        Text(
-          AppConfig.appName,
-          style: PetalText.display(context)
-              .copyWith(fontSize: compact ? 26 : 30, letterSpacing: 0.4),
-          textAlign: TextAlign.center,
+        SizedBox(height: widget.compact ? 14 : 18),
+        Semantics(
+          header: true,
+          label: AppConfig.appName,
+          excludeSemantics: true,
+          child: BrandWordmark(size: widget.compact ? 32 : 38),
         ),
         const SizedBox(height: 4),
         Text(
@@ -375,187 +511,161 @@ class _BrandHero extends StatelessWidget {
   }
 }
 
-class _ProgressRibbon extends StatelessWidget {
-  const _ProgressRibbon({
+/// Wide card into the world map, with campaign progress.
+class _CampaignCard extends StatelessWidget {
+  const _CampaignCard({
     required this.completed,
-    required this.petals,
-    required this.best,
+    required this.subtitle,
+    required this.accent,
+    required this.onTap,
   });
 
   final int completed;
-  final int petals;
-  final int best;
+  final String subtitle;
+  final Color accent;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final surfaces = PetalSurfaces.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: surfaces.panel.withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(PetalRadius.lg),
-        border: Border.all(color: surfaces.panelBorder.withValues(alpha: 0.7)),
-      ),
-      child: Row(
-        children: [
-          _RibbonStat(value: '$completed', label: 'cleared'),
-          _RibbonDivider(color: surfaces.panelBorder),
-          _RibbonStat(value: '$petals', label: 'petals'),
-          _RibbonDivider(color: surfaces.panelBorder),
-          _RibbonStat(value: '$best', label: 'best'),
-        ],
+    final tone = Color.lerp(accent, surfaces.onPanel, 0.25)!;
+    final ratio = completed / CampaignCatalog.totalLevels;
+    return Semantics(
+      button: true,
+      label: 'Campaign, $subtitle',
+      child: PressScale(
+        onTap: onTap,
+        scale: 0.98,
+        child: PetalPanel(
+          accent: accent,
+          padding: const EdgeInsets.fromLTRB(14, 14, 16, 14),
+          child: Row(
+            children: [
+              _IconBadge(icon: Icons.map_rounded, color: tone),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Campaign', style: PetalText.section(context)),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: PetalText.supporting(context),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: ratio.clamp(0.0, 1.0),
+                        minHeight: 5,
+                        color: tone,
+                        backgroundColor: surfaces.emptyCell,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Icon(Icons.chevron_right_rounded, color: tone, size: 26),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
 
-class _RibbonStat extends StatelessWidget {
-  const _RibbonStat({required this.value, required this.label});
-  final String value;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(value, style: PetalText.score(context)),
-          const SizedBox(height: 2),
-          Text(label, style: PetalText.caption(context)),
-        ],
-      ),
-    );
-  }
-}
-
-class _RibbonDivider extends StatelessWidget {
-  const _RibbonDivider({required this.color});
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 28,
-      margin: const EdgeInsets.symmetric(horizontal: 4),
-      color: color.withValues(alpha: 0.8),
-    );
-  }
-}
-
-class _FeatureCard extends StatelessWidget {
-  const _FeatureCard({
+class _ModeTile extends StatelessWidget {
+  const _ModeTile({
     required this.title,
     required this.subtitle,
     required this.icon,
-    required this.onTap,
-    required this.height,
     required this.accent,
-    this.emphasized = false,
+    required this.onTap,
     this.coached = false,
   });
 
   final String title;
   final String subtitle;
   final IconData icon;
-  final VoidCallback onTap;
-  final double height;
   final Color accent;
-  final bool emphasized;
+  final VoidCallback onTap;
   final bool coached;
 
   @override
   Widget build(BuildContext context) {
     final surfaces = PetalSurfaces.of(context);
-    final radius = emphasized ? PetalRadius.xl : PetalRadius.lg;
-    final iconBox = emphasized ? 52.0 : 46.0;
-
+    final tile = PetalPanel(
+      accent: accent,
+      padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _IconBadge(icon: icon, color: accent),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: PetalText.section(context),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: PetalText.caption(context),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
     return Semantics(
       button: true,
-      label: title,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(radius),
-          onTap: onTap,
-          child: Ink(
-            height: height,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(radius),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  accent.withValues(alpha: emphasized ? 0.24 : 0.14),
-                  surfaces.panel,
-                  surfaces.panel,
-                ],
-              ),
-              border: Border.all(
-                color: coached
-                    ? surfaces.accentSoft
-                    : accent.withValues(alpha: emphasized ? 0.5 : 0.32),
-                width: coached ? 2.4 : (emphasized ? 1.3 : 1.1),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: accent.withValues(alpha: emphasized ? 0.12 : 0.06),
-                  blurRadius: emphasized ? 18 : 12,
-                  offset: const Offset(0, 6),
+      label: '$title, $subtitle',
+      child: PressScale(
+        onTap: onTap,
+        child: coached
+            ? DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(PetalRadius.xl + 2),
+                  border: Border.all(color: surfaces.gold, width: 2.4),
+                  boxShadow: PetalShadows.glow(surfaces.gold),
                 ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  Container(
-                    width: iconBox,
-                    height: iconBox,
-                    decoration: BoxDecoration(
-                      color: accent.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(emphasized ? 16 : 14),
-                    ),
-                    child: Icon(
-                      icon,
-                      color: accent,
-                      size: emphasized ? 28 : 24,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: PetalText.section(context)
-                              .copyWith(fontSize: emphasized ? 17 : 16),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          subtitle,
-                          style: PetalText.supporting(context),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    Icons.arrow_forward_rounded,
-                    color: accent,
-                    size: emphasized ? 22 : 20,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+                child: tile,
+              )
+            : tile,
       ),
+    );
+  }
+}
+
+class _IconBadge extends StatelessWidget {
+  const _IconBadge({required this.icon, required this.color});
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 46,
+      height: 46,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(15),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            color.withValues(alpha: 0.32),
+            color.withValues(alpha: 0.14),
+          ],
+        ),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Icon(icon, color: color, size: 24),
     );
   }
 }

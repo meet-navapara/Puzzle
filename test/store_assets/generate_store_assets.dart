@@ -2,7 +2,8 @@
 // Not part of the suite (no _test suffix). Run with:
 //   flutter test test/store_assets/generate_store_assets.dart
 // Output: docs/store_assets/ (then run tool/flatten_store_assets.ps1, because
-// Play requires PNGs without an alpha channel).
+// Play requires PNGs without an alpha channel), plus the launcher icon sources
+// in assets/branding/ (then run: dart run flutter_launcher_icons).
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -21,7 +22,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../campaign/level_bot.dart';
 
-const _outDir = 'docs/store_assets';
+// STORE_OUT renders previews elsewhere without touching the store assets.
+final _outDir = Platform.environment['STORE_OUT'] ?? 'docs/store_assets';
 const _font = 'StoreRoboto';
 
 Future<void> _loadFonts() async {
@@ -50,15 +52,17 @@ Future<void> _capture(
   WidgetTester tester,
   GlobalKey key,
   String name,
-  double ratio,
-) async {
+  double ratio, {
+  String? dir,
+}) async {
   await tester.runAsync(() async {
     final boundary =
         key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
     final ui.Image image = await boundary.toImage(pixelRatio: ratio);
     final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-    Directory(_outDir).createSync(recursive: true);
-    File('$_outDir/$name.png').writeAsBytesSync(bytes!.buffer.asUint8List());
+    final out = dir ?? _outDir;
+    Directory(out).createSync(recursive: true);
+    File('$out/$name.png').writeAsBytesSync(bytes!.buffer.asUint8List());
   });
 }
 
@@ -187,6 +191,29 @@ void main() {
     );
     await tester.pump();
     await _capture(tester, fg, 'feature_graphic_1024x500', 1);
+
+    // Launcher icon sources, 1024 x 1024: full icon and adaptive foreground.
+    // Previews (STORE_OUT set) never overwrite the real branding files.
+    final iconDir = Platform.environment['STORE_OUT'] ?? 'assets/branding';
+    tester.view.physicalSize = const Size(1024, 1024);
+    for (final (name, foreground) in [
+      ('app_icon', false),
+      ('app_icon_foreground', true),
+    ]) {
+      final ik = GlobalKey();
+      await tester.pumpWidget(
+        RepaintBoundary(
+          key: ik,
+          child: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: PetalTheme.dark(),
+            home: _AppIcon(foregroundOnly: foreground),
+          ),
+        ),
+      );
+      await tester.pump();
+      await _capture(tester, ik, name, 1, dir: iconDir);
+    }
   }, timeout: const Timeout(Duration(minutes: 3)));
 }
 
@@ -200,7 +227,7 @@ class _FeatureGraphic extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF0E2A22), Color(0xFF1A3D32), Color(0xFF2D6A4F)],
+          colors: [Color(0xFF3A2152), Color(0xFF1A1530), Color(0xFF0E2A2A)],
         ),
       ),
       child: Row(
@@ -227,7 +254,7 @@ class _FeatureGraphic extends StatelessWidget {
                 'Grow your garden one block at a time',
                 style: TextStyle(
                   fontFamily: _font,
-                  color: Color(0xFFD8F3DC),
+                  color: Color(0xFFE6DFFF),
                   fontSize: 28,
                   fontWeight: FontWeight.w500,
                   decoration: TextDecoration.none,
@@ -238,7 +265,7 @@ class _FeatureGraphic extends StatelessWidget {
                 '500 levels · 10 worlds',
                 style: TextStyle(
                   fontFamily: _font,
-                  color: Color(0xFFF5C542),
+                  color: Color(0xFFFFC94D),
                   fontSize: 30,
                   fontWeight: FontWeight.w700,
                   decoration: TextDecoration.none,
@@ -247,6 +274,43 @@ class _FeatureGraphic extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Launcher icon: the PetalGrid mark on a twilight tile. [foregroundOnly]
+/// renders just the mark on transparency, sized for Android's adaptive-icon
+/// safe zone (the background colour lives in pubspec.yaml).
+class _AppIcon extends StatelessWidget {
+  const _AppIcon({required this.foregroundOnly});
+  final bool foregroundOnly;
+
+  @override
+  Widget build(BuildContext context) {
+    final mark = Center(child: BrandLogo(size: foregroundOnly ? 480 : 600));
+    if (foregroundOnly) {
+      return ColoredBox(color: Colors.transparent, child: mark);
+    }
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF3A2152), Color(0xFF1A1530), Color(0xFF10232A)],
+        ),
+      ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            radius: 0.75,
+            colors: [
+              const Color(0xFFFF8BA7).withValues(alpha: 0.28),
+              const Color(0xFFFF8BA7).withValues(alpha: 0),
+            ],
+          ),
+        ),
+        child: mark,
       ),
     );
   }

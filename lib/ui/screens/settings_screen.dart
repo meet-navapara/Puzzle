@@ -7,6 +7,7 @@ import '../../core/firebase_bootstrap.dart';
 import '../../services/auth_service.dart';
 import '../../state/app_state.dart';
 import '../theme/petal_theme.dart';
+import '../widgets/petal_button.dart';
 import '../widgets/google_mark.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -27,10 +28,12 @@ class SettingsScreen extends StatelessWidget {
           children: [
             Row(
               children: [
-                IconButton(
+                PetalIconButton(
+                  icon: Icons.arrow_back_rounded,
+                  tooltip: 'Back',
                   onPressed: () => app.go(AppScreen.mainMenu),
-                  icon: Icon(Icons.arrow_back_rounded, color: surfaces.onPanel),
                 ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     'Settings',
